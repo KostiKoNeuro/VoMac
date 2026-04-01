@@ -1,0 +1,32 @@
+name: Build Windows
+
+on:
+  workflow_dispatch: # Кнопка для ручного запуска
+
+jobs:
+  build-windows:
+    runs-on: windows-latest # Запрашиваем мощный сервер на Windows 11
+
+    steps:
+      - name: Скачиваем твой код
+        uses: actions/checkout@v4
+
+      - name: Устанавливаем Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Устанавливаем Rust (Основа Tauri)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Устанавливаем зависимости (npm install)
+        run: npm install
+
+      - name: Собираем Windows приложение (.msi)
+        run: npm run tauri build
+
+      - name: Выдаем готовый установщик для скачивания
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-Installer
+          path: src-tauri/target/release/bundle/msi/*.msi
