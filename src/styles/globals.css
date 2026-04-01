@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg-canvas: #06080d;
+  --color-bg-elevated: #0d121b;
+  --color-surface: rgba(18, 24, 35, 0.82);
+  --color-surface-soft: rgba(255, 255, 255, 0.035);
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-strong: rgba(255, 255, 255, 0.18);
+  --color-text-primary: #e8edf6;
+  --color-text-muted: #98a4b8;
+  --color-text-subtle: #77839a;
+  --color-accent: #62dcc0;
+  --color-accent-strong: #4dcfb0;
+  --radius-xs: 10px;
+  --radius-sm: 14px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 30px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --shadow-soft: 0 24px 50px -28px rgba(0, 0, 0, 0.9);
+  --shadow-glow: 0 20px 45px -32px rgba(91, 220, 193, 0.45);
+  --shadow-focus: 0 0 0 2px rgba(98, 220, 192, 0.45);
+  --blur-sm: 10px;
+  --blur-md: 18px;
+  --blur-lg: 28px;
+  --duration-fast: 160ms;
+  --duration-base: 240ms;
+  --duration-slow: 340ms;
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  font-family:
+    "Segoe UI Variable Text",
+    "Avenir Next",
+    "SF Pro Display",
+    "Manrope",
+    sans-serif;
+  color: var(--color-text-primary);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--color-text-primary);
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  text-rendering: optimizeLegibility;
+  background:
+    radial-gradient(
+      70% 60% at 9% -10%,
+      rgba(59, 178, 159, 0.26) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      60% 60% at 100% 0%,
+      rgba(34, 93, 136, 0.22) 0%,
+      transparent 58%
+    ),
+    var(--color-bg-canvas);
+}
+
+body[data-window="overlay"],
+body[data-window="rewriter"] {
+  background: transparent;
+  overflow: hidden;
+}
+
+body[data-window="overlay"] #root,
+body[data-window="rewriter"] #root {
+  background: transparent;
+}
+
+::selection {
+  background: rgba(98, 220, 192, 0.32);
+  color: #f5fbff;
+}
+
+@layer components {
+  .ui-surface {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    backdrop-filter: blur(var(--blur-md));
+    box-shadow: var(--shadow-soft);
+  }
+
+  .ui-surface-soft {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-soft);
+    backdrop-filter: blur(var(--blur-sm));
+  }
+
+  .ui-interactive {
+    transition-property: background-color, border-color, color, transform, box-shadow,
+      opacity;
+    transition-duration: var(--duration-base);
+    transition-timing-function: var(--ease-standard);
+  }
+
+  .ui-focus {
+    outline: none;
+  }
+
+  .ui-focus:focus-visible {
+    box-shadow: var(--shadow-focus);
+  }
+
+  .ui-empty-state {
+    border: 1px dashed var(--color-border-strong);
+    background: rgba(255, 255, 255, 0.018);
+  }
+
+  .ui-muted {
+    color: var(--color-text-muted);
+  }
+
+  .ui-subtle {
+    color: var(--color-text-subtle);
+  }
+}

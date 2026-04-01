@@ -1,0 +1,13 @@
+[registries.crates-io]
+protocol = "sparse"
+
+[build]
+target-dir = "D:/cargo-target/vo"
+
+[net]
+git-fetch-with-cli = true
+retry = 3
+
+[http]
+timeout = 60
+multiplexing = true

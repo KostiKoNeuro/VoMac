@@ -1,0 +1,244 @@
+.rewriter-overlay-root {
+  display: grid;
+  place-items: center;
+  height: 100vh;
+  padding: 4px;
+  background: transparent;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+.rewriter-pill {
+  width: 340px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: rgba(18, 18, 22, 0.92);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #e4e4e8;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* ─── Selected text preview ─── */
+.rewriter-selected-preview {
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-left: 2px solid rgba(160, 120, 255, 0.4);
+}
+
+/* ─── Presets row ─── */
+.rewriter-presets-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.rewriter-preset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.rewriter-preset-btn:hover {
+  background: rgba(160, 120, 255, 0.15);
+  border-color: rgba(160, 120, 255, 0.3);
+  color: #fff;
+}
+
+/* ─── Input row ─── */
+.rewriter-input-row {
+  display: flex;
+  gap: 6px;
+}
+
+.rewriter-input {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease;
+  font-family: inherit;
+}
+
+.rewriter-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.rewriter-input:focus {
+  border-color: rgba(160, 120, 255, 0.5);
+}
+
+.rewriter-send-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, rgba(140, 100, 255, 0.85), rgba(100, 140, 255, 0.85));
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+}
+
+.rewriter-send-btn:hover {
+  opacity: 0.85;
+}
+
+.rewriter-send-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ─── Processing ─── */
+.rewriter-processing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+}
+
+.rewriter-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(160, 120, 255, 0.25);
+  border-top-color: rgba(160, 120, 255, 0.85);
+  border-radius: 50%;
+  animation: rewriter-spin 0.65s linear infinite;
+}
+
+@keyframes rewriter-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ─── Result ─── */
+.rewriter-result-text {
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #e4e4e8;
+  line-height: 1.5;
+  max-height: 120px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.rewriter-actions-row {
+  display: flex;
+  gap: 6px;
+}
+
+.rewriter-action-btn {
+  flex: 1;
+  padding: 7px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.rewriter-action-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.rewriter-action-btn.primary {
+  background: linear-gradient(135deg, rgba(80, 200, 120, 0.3), rgba(80, 180, 140, 0.3));
+  border-color: rgba(80, 200, 120, 0.25);
+  color: rgba(120, 230, 160, 0.95);
+}
+
+.rewriter-action-btn.primary:hover {
+  background: linear-gradient(135deg, rgba(80, 200, 120, 0.45), rgba(80, 180, 140, 0.45));
+}
+
+.rewriter-action-btn.cancel {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.rewriter-action-btn.cancel:hover {
+  color: rgba(255, 100, 100, 0.8);
+}
+
+.rewriter-action-btn.copy {
+  background: rgba(100, 160, 255, 0.12);
+  border-color: rgba(100, 160, 255, 0.2);
+  color: rgba(140, 185, 255, 0.9);
+}
+
+.rewriter-action-btn.copy:hover {
+  background: rgba(100, 160, 255, 0.22);
+}
+
+/* ─── Close / Cancel button (✕) ─── */
+.rewriter-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rewriter-close-btn:hover {
+  background: rgba(255, 100, 100, 0.15);
+  color: rgba(255, 100, 100, 0.9);
+}
+
+/* ─── Error banner ─── */
+.rewriter-error-banner {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 80, 80, 0.1);
+  border: 1px solid rgba(255, 80, 80, 0.2);
+  color: rgba(255, 130, 130, 0.9);
+  font-size: 12px;
+  line-height: 1.4;
+}
