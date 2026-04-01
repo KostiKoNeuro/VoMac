@@ -411,12 +411,14 @@ fn is_window_ready(state: &DictationRuntimeStore, label: &str) -> bool {
     lock_recover(&state.ready_windows).contains(label)
 }
 
+#[cfg(target_os = "windows")]
 fn monitor_lookup_window<R: Runtime>(app_handle: &AppHandle<R>) -> Option<WebviewWindow<R>> {
     app_handle
         .get_webview_window(MAIN_WINDOW_LABEL)
         .or_else(|| app_handle.get_webview_window(OVERLAY_WINDOW_LABEL))
 }
 
+#[cfg(target_os = "windows")]
 fn resolve_monitor_geometry<R: Runtime>(
     app_handle: &AppHandle<R>,
     anchor: &AnchorSnapshot,
