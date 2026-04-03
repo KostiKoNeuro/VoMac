@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-macos:
-    runs-on: macos-latest # Запрашиваем сервер с macOS от GitHub
+    runs-on: macos-latest
 
     steps:
       - name: Скачиваем твой код
@@ -18,15 +18,17 @@ jobs:
 
       - name: Устанавливаем Rust (Основа Tauri)
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Устанавливаем зависимости (npm install)
         run: npm install
 
-      - name: Собираем macOS приложение (.dmg)
-        run: npm run tauri build
+      - name: Собираем macOS приложение (Universal — Intel + Apple Silicon)
+        run: npm run tauri build -- --target universal-apple-darwin
 
       - name: Выдаем готовый установщик для скачивания
         uses: actions/upload-artifact@v4
         with:
-          name: Mac-Installer
-          path: src-tauri/target/release/bundle/dmg/*.dmg
+          name: Mac-Installer-Universal
+          path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
