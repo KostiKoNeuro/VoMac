@@ -3,8 +3,8 @@ name: Build macOS
 on:
   workflow_dispatch:
     inputs:
-      target:
-        description: 'Build target'
+      variant:
+        description: 'Build type'
         required: true
         default: 'arm64'
         type: choice
@@ -16,7 +16,8 @@ env:
   CARGO_TERM_PROGRESS_WIDTH: 80
 
 jobs:
-  build:
+  arm64:
+    if: github.event.inputs.variant == 'arm64' || github.event.inputs.variant == ''
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -25,61 +26,55 @@ jobs:
         with:
           node-version: '20'
 
-      - if: inputs.target == 'arm64'
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-darwin
-
-      - if: inputs.target == 'universal'
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin, x86_64-apple-darwin
 
       - name: Install dependencies
         run: npm install
 
-      # ── ARM64 ──
-      - if: inputs.target == 'arm64'
-        name: Build Apple Silicon
+      - name: Build Apple Silicon
         run: npm run tauri build
 
-      # ── Universal: step 1 = ARM64 ──
-      - if: inputs.target == 'universal'
-        name: Build ARM64
-        run: npm run tauri build -- --target aarch64-apple-darwin
-
-      # ── Universal: step 2 = x86_64 ──
-      - if: inputs.target == 'universal'
-        name: Build Intel
-        run: npm run tauri build -- --target x86_64-apple-darwin
-
-      # ── Debug: find actual binary paths ──
-      - if: inputs.target == 'universal'
-        name: Debug: find ARM64 binary
-        run: |
-          echo "=== Looking for ARM64 binary ==="
-          find src-tauri/target/aarch64-apple-darwin -name "Dicta" -type f 2>/dev/null
-          echo "=== Looking for .app bundles ==="
-          find src-tauri/target/aarch64-apple-darwin -name "*.app" -type d 2>/dev/null
-          echo "=== aarch64-apple-darwin release dir ==="
-          ls -la src-tauri/target/aarch64-apple-darwin/release/ 2>/dev/null || echo "no release dir"
-          echo "=== x86_64-apple-darwin release dir ==="
-          ls -la src-tauri/target/x86_64-apple-darwin/release/ 2>/dev/null || echo "no release dir"
-
-      # ── Upload ARM64 DMG ──
-      - if: inputs.target == 'arm64'
-        name: Upload ARM64 installer
+      - name: Upload ARM64 installer
         uses: actions/upload-artifact@v4
         with:
           name: Mac-Installer-arm64
           path: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
           retention-days: 14
 
-      # ── Upload Universal DMG ──
-      - if: inputs.target == 'universal'
-        name: Upload Universal installer
-        uses: actions/upload-artifact@v4
+  universal:
+    if: github.event.inputs.variant == 'universal'
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
-          name: Mac-Installer-Universal
-          path: src-tauri/target/Dicta-universal.dmg
-          retention-days: 14
+          node-version: '20'
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build ARM64
+        run: npm run tauri build -- --target aarch64-apple-darwin
+
+      - name: Build Intel
+        run: npm run tauri build -- --target x86_64-apple-darwin
+
+      - name: Debug: find binary paths
+        run: |
+          echo "=== ARM64 binary ==="
+          find src-tauri/target/aarch64-apple-darwin -name "Dicta" -type f 2>/dev/null || echo "not found"
+          echo "=== Intel binary ==="
+          find src-tauri/target/x86_64-apple-darwin -name "Dicta" -type f 2>/dev/null || echo "not found"
+          echo "=== .app bundles ==="
+          find src-tauri/target -name "*.app" -type d 2>/dev/null || echo "not found"
+
+      - name: Upload logs
+        if: false
+        run: echo "Universal build - manual merge needed. Run ARM64 job first."
