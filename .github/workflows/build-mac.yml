@@ -25,13 +25,11 @@ jobs:
         with:
           node-version: '20'
 
-      # ── ARM64: install ARM64 target only ──
       - if: inputs.target == 'arm64'
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-darwin
 
-      # ── Universal: install both targets ──
       - if: inputs.target == 'universal'
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -40,56 +38,45 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # ── ARM64: single target, straightforward ──
+      # ── ARM64 ──
       - if: inputs.target == 'arm64'
         name: Build Apple Silicon
         run: npm run tauri build
 
-      # ── Universal: lipo both architectures into one binary ──
+      # ── Universal: step 1 = ARM64 ──
       - if: inputs.target == 'universal'
         name: Build ARM64
         run: npm run tauri build -- --target aarch64-apple-darwin
 
+      # ── Universal: step 2 = x86_64 ──
       - if: inputs.target == 'universal'
         name: Build Intel
         run: npm run tauri build -- --target x86_64-apple-darwin
 
+      # ── Universal: step 3 = merge with lipo ──
       - if: inputs.target == 'universal'
         name: Merge Universal binary
         run: |
-          ARM64=$(find src-tauri/target -path "*aarch64*" -name "Dicta" -type f | head -1)
-          INTEL=$(find src-tauri/target -path "*x86_64*" -name "Dicta" -type f | head -1)
+          ARM64_BIN="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Dicta.app/Contents/MacOS/Dicta"
+          INTEL_BIN="src-tauri/target/x86_64-apple-darwin/release/bundle/macos/Dicta.app/Contents/MacOS/Dicta"
+          UNIV_BIN="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Dicta.app/Contents/MacOS/Dicta"
 
-          echo "ARM64 binary: $ARM64"
-          echo "Intel binary: $INTEL"
+          echo "Checking ARM64: $ARM64_BIN"
+          ls -lh "$ARM64_BIN"
+          echo "Checking Intel: $INTEL_BIN"
+          ls -lh "$INTEL_BIN"
 
-          if [ -z "$ARM64" ] || [ -z "$INTEL" ]; then
-            echo "ERROR: Could not find both binaries"
-            exit 1
-          fi
+          echo "Merging with lipo..."
+          lipo -create "$ARM64_BIN" "$INTEL_BIN" -output "$UNIV_BIN"
 
-          mkdir -p src-tauri/target/universal
-          lipo -create "$ARM64" "$INTEL" -output src-tauri/target/universal/Dicta
+          echo "Result:"
+          lipo -info "$UNIV_BIN"
 
-          echo "LIPO succeeded, result size:"
-          ls -lh src-tauri/target/universal/Dicta
-
-          # Replace ARM64 binary with unified one
-          cp src-tauri/target/universal/Dicta "$ARM64"
-
+      # ── Universal: step 4 = create DMG ──
       - if: inputs.target == 'universal'
         name: Create DMG
         run: |
-          # Find the .app bundle
-          ARM64_APP=$(find src-tauri/target -path "*aarch64*" -name "Dicta.app" | head -1)
-          echo "Using app bundle: $ARM64_APP"
-
-          if [ -z "$ARM64_APP" ]; then
-            echo "ERROR: Could not find .app bundle"
-            exit 1
-          fi
-
-          # Build DMG from the app (it's already a universal binary now)
+          APP="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Dicta.app"
           brew install create-dmg
           create-dmg \
             --app-drop-link 480 280 \
@@ -99,17 +86,18 @@ jobs:
             --volicon "src-tauri/icons/icon.icns" \
             --icon "Dicta.app" 140 195 \
             "src-tauri/target/Dicta-universal.dmg" \
-            "$ARM64_APP" || \
-            hdiutil create -srcfolder "$ARM64_APP" -volname "Dicta" -fs HFS+ "src-tauri/target/Dicta-universal.dmg"
+            "$APP"
 
+      # ── Upload ARM64 DMG ──
       - if: inputs.target == 'arm64'
         name: Upload ARM64 installer
         uses: actions/upload-artifact@v4
         with:
           name: Mac-Installer-arm64
-          path: src-tauri/target/release/bundle/dmg/*.dmg
+          path: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
           retention-days: 14
 
+      # ── Upload Universal DMG ──
       - if: inputs.target == 'universal'
         name: Upload Universal installer
         uses: actions/upload-artifact@v4
