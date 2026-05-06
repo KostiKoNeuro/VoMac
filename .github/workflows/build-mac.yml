@@ -2,12 +2,22 @@ name: Build macOS
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: 'Build target'
+        required: true
+        default: 'arm64'
+        type: choice
+        options:
+          - arm64
+          - universal
+
+env:
+  CARGO_TERM_PROGRESS_WIDTH: 80
 
 jobs:
-  # ── Option A: Apple Silicon only (fastest, most reliable) ──
-  build-macos-arm64:
+  build:
     runs-on: macos-14
-
     steps:
       - uses: actions/checkout@v4
 
@@ -15,72 +25,71 @@ jobs:
         with:
           node-version: '20'
 
-      - uses: dtolnay/rust-toolchain@stable
+      # ── ARM64: install ARM64 target only ──
+      - if: inputs.target == 'arm64'
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-darwin
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build (Apple Silicon)
-        run: npm run tauri build
-
-      - name: Upload installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: Mac-Installer-arm64
-          path: src-tauri/target/release/bundle/dmg/*.dmg
-
-  # ── Option B: Universal binary (Intel + Apple Silicon) ──
-  build-macos-universal:
-    runs-on: macos-14
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - uses: dtolnay/rust-toolchain@stable
+      # ── Universal: install both targets ──
+      - if: inputs.target == 'universal'
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-darwin, x86_64-apple-darwin
 
       - name: Install dependencies
         run: npm install
 
-      - name: Build Apple Silicon
-        run: npm run tauri build -- --target aarch64-apple-darwin
-        env:
-          CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER: ${{ env.MACOSX_DEPLOYMENT_TARGET }}
+      # ── ARM64: single target, straightforward ──
+      - if: inputs.target == 'arm64'
+        name: Build Apple Silicon
+        run: npm run tauri build
 
-      - name: Build Intel
+      # ── Universal: lipo both architectures into one binary ──
+      - if: inputs.target == 'universal'
+        name: Build ARM64
+        run: npm run tauri build -- --target aarch64-apple-darwin
+
+      - if: inputs.target == 'universal'
+        name: Build Intel
         run: npm run tauri build -- --target x86_64-apple-darwin
 
-      - name: Create Universal binary
+      - if: inputs.target == 'universal'
+        name: Merge Universal binary
         run: |
-          # Find .app bundles
-          ARM64_APP=$(find src-tauri/target -name "*.app" -path "*aarch64*" | head -1)
-          INTEL_APP=$(find src-tauri/target -name "*.app" -path "*x86_64*" | head -1)
+          ARM64=$(find src-tauri/target -path "*aarch64*" -name "Dicta" -type f | head -1)
+          INTEL=$(find src-tauri/target -path "*x86_64*" -name "Dicta" -type f | head -1)
 
-          echo "Arm64 app: $ARM64_APP"
-          echo "Intel app: $INTEL_APP"
+          echo "ARM64 binary: $ARM64"
+          echo "Intel binary: $INTEL"
 
-          # Merge using lipo
-          lipo -create "$ARM64_APP/Contents/MacOS/Dicta" "$INTEL_APP/Contents/MacOS/Dicta" \
-            -output src-tauri/target/universal/Dicta
+          if [ -z "$ARM64" ] || [ -z "$INTEL" ]; then
+            echo "ERROR: Could not find both binaries"
+            exit 1
+          fi
 
-          mkdir -p src-tauri/target/universal/Dicta.app/Contents/MacOS
-          cp -r "$ARM64_APP/Contents/Resources" src-tauri/target/universal/Dicta.app/Contents/
-          cp -r "$ARM64_APP/Contents/Frameworks" src-tauri/target/universal/Dicta.app/Contents/ 2>/dev/null || true
-          cp src-tauri/target/universal/Dicta src-tauri/target/universal/Dicta.app/Contents/MacOS/
-          cp "$ARM64_APP/Contents/Info.plist" src-tauri/target/universal/Dicta.app/Contents/
-          cp "$ARM64_APP/Contents/PkgInfo" src-tauri/target/universal/Dicta.app/Contents/ 2>/dev/null || true
+          mkdir -p src-tauri/target/universal
+          lipo -create "$ARM64" "$INTEL" -output src-tauri/target/universal/Dicta
 
-          echo "Universal app created"
+          echo "LIPO succeeded, result size:"
+          ls -lh src-tauri/target/universal/Dicta
 
-      - name: Create DMG
+          # Replace ARM64 binary with unified one
+          cp src-tauri/target/universal/Dicta "$ARM64"
+
+      - if: inputs.target == 'universal'
+        name: Create DMG
         run: |
+          # Find the .app bundle
+          ARM64_APP=$(find src-tauri/target -path "*aarch64*" -name "Dicta.app" | head -1)
+          echo "Using app bundle: $ARM64_APP"
+
+          if [ -z "$ARM64_APP" ]; then
+            echo "ERROR: Could not find .app bundle"
+            exit 1
+          fi
+
+          # Build DMG from the app (it's already a universal binary now)
           brew install create-dmg
           create-dmg \
             --app-drop-link 480 280 \
@@ -88,16 +97,23 @@ jobs:
             --window-size 600 400 \
             --volname "Dicta" \
             --volicon "src-tauri/icons/icon.icns" \
-            --icon "Dicta" 140 195 \
-            src-tauri/target/Dicta-universal.dmg \
-            src-tauri/target/universal/Dicta.app || \
-            hdiutil create -srcfolder src-tauri/target/universal/Dicta.app -volname "Dicta" -fs HFS+ src-tauri/target/Dicta-universal.hfs.dmg
+            --icon "Dicta.app" 140 195 \
+            "src-tauri/target/Dicta-universal.dmg" \
+            "$ARM64_APP" || \
+            hdiutil create -srcfolder "$ARM64_APP" -volname "Dicta" -fs HFS+ "src-tauri/target/Dicta-universal.dmg"
 
-      - name: Upload Universal installer
+      - if: inputs.target == 'arm64'
+        name: Upload ARM64 installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mac-Installer-arm64
+          path: src-tauri/target/release/bundle/dmg/*.dmg
+          retention-days: 14
+
+      - if: inputs.target == 'universal'
+        name: Upload Universal installer
         uses: actions/upload-artifact@v4
         with:
           name: Mac-Installer-Universal
-          path: |
-            src-tauri/target/Dicta-universal.dmg
-            src-tauri/target/Dicta-universal.hfs.dmg
+          path: src-tauri/target/Dicta-universal.dmg
           retention-days: 14
