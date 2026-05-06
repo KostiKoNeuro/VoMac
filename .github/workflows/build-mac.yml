@@ -53,40 +53,18 @@ jobs:
         name: Build Intel
         run: npm run tauri build -- --target x86_64-apple-darwin
 
-      # ── Universal: step 3 = merge with lipo ──
+      # ── Debug: find actual binary paths ──
       - if: inputs.target == 'universal'
-        name: Merge Universal binary
+        name: Debug: find ARM64 binary
         run: |
-          ARM64_BIN="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Dicta.app/Contents/MacOS/Dicta"
-          INTEL_BIN="src-tauri/target/x86_64-apple-darwin/release/bundle/macos/Dicta.app/Contents/MacOS/Dicta"
-          UNIV_BIN="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Dicta.app/Contents/MacOS/Dicta"
-
-          echo "Checking ARM64: $ARM64_BIN"
-          ls -lh "$ARM64_BIN"
-          echo "Checking Intel: $INTEL_BIN"
-          ls -lh "$INTEL_BIN"
-
-          echo "Merging with lipo..."
-          lipo -create "$ARM64_BIN" "$INTEL_BIN" -output "$UNIV_BIN"
-
-          echo "Result:"
-          lipo -info "$UNIV_BIN"
-
-      # ── Universal: step 4 = create DMG ──
-      - if: inputs.target == 'universal'
-        name: Create DMG
-        run: |
-          APP="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Dicta.app"
-          brew install create-dmg
-          create-dmg \
-            --app-drop-link 480 280 \
-            --window-pos 200 120 \
-            --window-size 600 400 \
-            --volname "Dicta" \
-            --volicon "src-tauri/icons/icon.icns" \
-            --icon "Dicta.app" 140 195 \
-            "src-tauri/target/Dicta-universal.dmg" \
-            "$APP"
+          echo "=== Looking for ARM64 binary ==="
+          find src-tauri/target/aarch64-apple-darwin -name "Dicta" -type f 2>/dev/null
+          echo "=== Looking for .app bundles ==="
+          find src-tauri/target/aarch64-apple-darwin -name "*.app" -type d 2>/dev/null
+          echo "=== aarch64-apple-darwin release dir ==="
+          ls -la src-tauri/target/aarch64-apple-darwin/release/ 2>/dev/null || echo "no release dir"
+          echo "=== x86_64-apple-darwin release dir ==="
+          ls -la src-tauri/target/x86_64-apple-darwin/release/ 2>/dev/null || echo "no release dir"
 
       # ── Upload ARM64 DMG ──
       - if: inputs.target == 'arm64'
