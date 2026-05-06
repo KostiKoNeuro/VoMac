@@ -2,48 +2,12 @@ name: Build macOS
 
 on:
   workflow_dispatch:
-    inputs:
-      variant:
-        description: 'Build type'
-        default: 'arm64'
-        type: choice
-        options:
-          - arm64
-          - universal
 
 env:
   CARGO_TERM_PROGRESS_WIDTH: 80
 
 jobs:
-  arm64:
-    if: github.event.inputs.variant == 'arm64' || github.event.inputs.variant == ''
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build Apple Silicon
-        run: npm run tauri build
-
-      - name: Upload ARM64 installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: Mac-Installer-arm64
-          path: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
-          retention-days: 14
-
-  universal:
-    if: github.event.inputs.variant == 'universal'
+  build-macos:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -57,23 +21,14 @@ jobs:
           targets: aarch64-apple-darwin, x86_64-apple-darwin
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Build ARM64
-        run: npm run tauri build -- --target aarch64-apple-darwin
+      - name: Build universal macOS installer
+        run: npm run tauri build -- --target universal-apple-darwin
 
-      - name: Build Intel
-        run: npm run tauri build -- --target x86_64-apple-darwin
-
-      - name: Debug: find binary paths
-        run: |
-          echo "=== ARM64 binary ==="
-          find src-tauri/target/aarch64-apple-darwin -name "Dicta" -type f 2>/dev/null || echo "not found"
-          echo "=== Intel binary ==="
-          find src-tauri/target/x86_64-apple-darwin -name "Dicta" -type f 2>/dev/null || echo "not found"
-          echo "=== .app bundles ==="
-          find src-tauri/target -name "*.app" -type d 2>/dev/null || echo "not found"
-
-      - name: Upload logs
-        if: false
-        run: echo "Universal build - manual merge needed. Run ARM64 job first."
+      - name: Upload universal macOS installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mac-Installer-universal
+          path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          retention-days: 14
