@@ -1,34 +1,103 @@
-name: Build MacOS
+name: Build macOS
 
 on:
-  workflow_dispatch: # Кнопка для ручного запуска
+  workflow_dispatch:
 
 jobs:
-  build-macos:
-    runs-on: macos-latest
+  # ── Option A: Apple Silicon only (fastest, most reliable) ──
+  build-macos-arm64:
+    runs-on: macos-14
 
     steps:
-      - name: Скачиваем твой код
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Устанавливаем Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Устанавливаем Rust (Основа Tauri)
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
+          targets: aarch64-apple-darwin
 
-      - name: Устанавливаем зависимости (npm install)
+      - name: Install dependencies
         run: npm install
 
-      - name: Собираем macOS приложение (Universal — Intel + Apple Silicon)
-        run: npm run tauri build -- --target universal-apple-darwin
+      - name: Build (Apple Silicon)
+        run: npm run tauri build
 
-      - name: Выдаем готовый установщик для скачивания
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mac-Installer-arm64
+          path: src-tauri/target/release/bundle/dmg/*.dmg
+
+  # ── Option B: Universal binary (Intel + Apple Silicon) ──
+  build-macos-universal:
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Apple Silicon
+        run: npm run tauri build -- --target aarch64-apple-darwin
+        env:
+          CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER: ${{ env.MACOSX_DEPLOYMENT_TARGET }}
+
+      - name: Build Intel
+        run: npm run tauri build -- --target x86_64-apple-darwin
+
+      - name: Create Universal binary
+        run: |
+          # Find .app bundles
+          ARM64_APP=$(find src-tauri/target -name "*.app" -path "*aarch64*" | head -1)
+          INTEL_APP=$(find src-tauri/target -name "*.app" -path "*x86_64*" | head -1)
+
+          echo "Arm64 app: $ARM64_APP"
+          echo "Intel app: $INTEL_APP"
+
+          # Merge using lipo
+          lipo -create "$ARM64_APP/Contents/MacOS/Dicta" "$INTEL_APP/Contents/MacOS/Dicta" \
+            -output src-tauri/target/universal/Dicta
+
+          mkdir -p src-tauri/target/universal/Dicta.app/Contents/MacOS
+          cp -r "$ARM64_APP/Contents/Resources" src-tauri/target/universal/Dicta.app/Contents/
+          cp -r "$ARM64_APP/Contents/Frameworks" src-tauri/target/universal/Dicta.app/Contents/ 2>/dev/null || true
+          cp src-tauri/target/universal/Dicta src-tauri/target/universal/Dicta.app/Contents/MacOS/
+          cp "$ARM64_APP/Contents/Info.plist" src-tauri/target/universal/Dicta.app/Contents/
+          cp "$ARM64_APP/Contents/PkgInfo" src-tauri/target/universal/Dicta.app/Contents/ 2>/dev/null || true
+
+          echo "Universal app created"
+
+      - name: Create DMG
+        run: |
+          brew install create-dmg
+          create-dmg \
+            --app-drop-link 480 280 \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --volname "Dicta" \
+            --volicon "src-tauri/icons/icon.icns" \
+            --icon "Dicta" 140 195 \
+            src-tauri/target/Dicta-universal.dmg \
+            src-tauri/target/universal/Dicta.app || \
+            hdiutil create -srcfolder src-tauri/target/universal/Dicta.app -volname "Dicta" -fs HFS+ src-tauri/target/Dicta-universal.hfs.dmg
+
+      - name: Upload Universal installer
         uses: actions/upload-artifact@v4
         with:
           name: Mac-Installer-Universal
-          path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          path: |
+            src-tauri/target/Dicta-universal.dmg
+            src-tauri/target/Dicta-universal.hfs.dmg
+          retention-days: 14
