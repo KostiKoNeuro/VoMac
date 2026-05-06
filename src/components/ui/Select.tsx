@@ -32,14 +32,14 @@ export function Select({
       </span>
       <select
         id={selectId}
-        className="ui-interactive ui-focus h-10 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-white/[0.03] px-3 text-sm text-[var(--color-text-primary)] outline-none hover:border-[var(--color-border-strong)] focus:border-emerald-200/45 focus:bg-white/[0.06]"
+        className="ui-interactive ui-focus h-10 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-white/[0.03] px-3 text-sm text-[var(--color-text-primary)] outline-none hover:border-[var(--color-border-strong)] focus:border-indigo-200/45 focus:bg-white/[0.06]"
         {...props}
       >
         {options.map((option) => (
           <option 
             key={option.value} 
             value={option.value}
-            style={{ background: '#0d121b', color: '#e8edf6' }}
+            style={{ background: '#0f1520', color: '#edf0f7' }}
           >
             {option.label}
           </option>

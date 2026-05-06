@@ -50,7 +50,6 @@ export function DictationOverlayWindow() {
 
   const {
     overlayState,
-    levels,
     timerLabel,
     successLabel,
     errorTitle,
@@ -150,7 +149,6 @@ export function DictationOverlayWindow() {
         state={overlayState}
         interactive
         timerLabel={timerLabel}
-        waveformLevels={levels}
         errorTitle={errorTitle}
         errorText={errorText ?? undefined}
         successText={successLabel}

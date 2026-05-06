@@ -1,30 +1,253 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { SectionCard } from "../../components/SectionCard";
 import { SettingsRow } from "../../components/SettingsRow";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Notice } from "../../components/ui/Notice";
-import {
-  loadSharedRewriterSettings,
-  saveSharedRewriterSettings,
-  listenForSharedRewriterSettingsSync,
-  loadSharedTranscriptionSettings,
-  listenForSharedTranscriptionSettingsSync,
-} from "../../lib/sharedState";
+import { REWRITER_ICONS, getIconEntry, type RewriterIconKey } from "./config/rewriterIcons";
+import { loadSharedRewriterSettings, saveSharedRewriterSettings,
+  listenForSharedRewriterSettingsSync, loadSharedTranscriptionSettings,
+  listenForSharedTranscriptionSettingsSync } from "../../lib/sharedState";
 import { defaultRewriterSettings } from "./config/rewriterSettingsStore";
-import {
-  buildProviderOptions,
-  getProviderPreset,
-} from "../transcription/config/transcriptionSettings";
+import { buildProviderOptions, getProviderPreset } from "../transcription/config/transcriptionSettings";
 import { useTranslation } from "../../lib/i18n";
 import { isTauriRuntime } from "../../lib/tauri/runtime";
 import { fetchAvailableModels } from "../../lib/modelLoader";
 import type { RewriterPreset, RewriterSettings } from "./types";
 import type { CustomProviderConfig } from "../transcription/types";
+import { cn } from "../../lib/cn";
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+/* ── Icon picker for preset editor ── */
+function IconPicker({
+  value,
+  onChange,
+}: {
+  value: RewriterIconKey;
+  onChange: (key: RewriterIconKey) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const current = getIconEntry(value);
+  const CurrentIcon = current.Icon;
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-white/[0.04] text-[var(--color-text-muted)] transition-all hover:border-[var(--color-border-strong)] hover:bg-white/[0.08] hover:text-[var(--color-text-primary)]"
+        title="Change icon"
+      >
+        <CurrentIcon className="h-4 w-4" />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-11 z-20 grid w-[200px] grid-cols-4 gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-2 shadow-[var(--shadow-soft)]">
+            {REWRITER_ICONS.map(({ key, label, Icon }) => (
+              <button
+                key={key}
+                type="button"
+                title={label}
+                onClick={() => { onChange(key); setOpen(false); }}
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-lg transition-all",
+                  value === key
+                    ? "bg-[var(--color-accent)]/15 text-[var(--color-accent)]"
+                    : "text-[var(--color-text-muted)] hover:bg-white/[0.06] hover:text-[var(--color-text-primary)]",
+                )}
+              >
+                <Icon className="h-4 w-4" />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ── Prompt editor modal ── */
+function PromptModal({
+  preset,
+  onSave,
+  onCancel,
+}: {
+  preset: RewriterPreset;
+  onSave: (prompt: string) => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState(preset.prompt);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+    textareaRef.current?.select();
+  }, []);
+
+  function handleSave() {
+    onSave(draft.trim());
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Escape") onCancel();
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") handleSave();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onCancel}
+      />
+
+      {/* Modal */}
+      <div
+        className="relative z-10 w-full max-w-lg rounded-2xl border border-white/10 bg-[var(--color-bg-elevated)] shadow-[var(--shadow-soft)]"
+        onKeyDown={handleKeyDown}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b border-white/8 px-5 py-4">
+          <IconPreview icon={preset.icon} className="h-5 w-5 shrink-0 text-[var(--color-accent)]" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
+              {preset.name || t("rewriter.presets.untitled" as any)}
+            </p>
+            <p className="text-xs text-[var(--color-text-subtle)]">
+              {t("rewriter.presets.promptEditor.title" as any)}
+            </p>
+          </div>
+          <button
+            onClick={onCancel}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--color-text-subtle)] transition-all hover:bg-white/[0.06] hover:text-[var(--color-text-primary)]"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Prompt textarea */}
+        <div className="p-5">
+          <textarea
+            ref={textareaRef}
+            className="w-full resize-none rounded-xl border border-[var(--color-border)] bg-white/[0.04] px-4 py-3 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-subtle)] focus:border-[var(--color-accent)]/45 focus:bg-white/[0.06]"
+            rows={7}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={t("rewriter.presets.promptPlaceholder" as any)}
+          />
+          <p className="mt-2 text-xs text-[var(--color-text-subtle)]">
+            {t("rewriter.presets.promptEditor.hint" as any)}
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 border-t border-white/8 px-5 py-4">
+          <button
+            onClick={onCancel}
+            className="rounded-xl px-4 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:bg-white/[0.06] hover:text-[var(--color-text-primary)]"
+          >
+            {t("common.cancel" as any)}
+          </button>
+          <button
+            onClick={handleSave}
+            className="rounded-xl border border-indigo-200/45 bg-gradient-to-r from-indigo-200 to-violet-300 px-4 py-2 text-sm font-semibold text-zinc-900 shadow-[var(--shadow-glow)] transition-all hover:brightness-105 active:brightness-95"
+          >
+            {t("common.save" as any)}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Icon preview (standalone) ── */
+function IconPreview({ icon, className }: { icon: RewriterIconKey; className?: string }) {
+  const { Icon } = getIconEntry(icon);
+  return <Icon className={className} />;
+}
+
+/* ── Single preset row ── */
+function PresetRow({
+  preset,
+  onUpdate,
+  onDelete,
+}: {
+  preset: RewriterPreset;
+  onUpdate: (field: keyof RewriterPreset, value: string | boolean) => void;
+  onDelete: () => void;
+}) {
+  const { t } = useTranslation();
+  const [editing, setEditing] = useState(false);
+  const CurrentIcon = getIconEntry(preset.icon).Icon;
+
+  return (
+    <>
+      <div className="flex flex-col gap-2 rounded-2xl border border-[var(--color-border)] bg-white/[0.02] p-3">
+        <div className="flex items-center gap-2">
+          <IconPicker
+            value={preset.icon}
+            onChange={(key) => onUpdate("icon", key)}
+          />
+          <input
+            className="flex-1 rounded-xl border border-[var(--color-border)] bg-white/[0.03] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none transition-colors placeholder:text-[var(--color-text-subtle)] focus:border-[var(--color-accent)]/40 focus:bg-white/[0.05]"
+            value={preset.name}
+            onChange={(e) => onUpdate("name", e.target.value)}
+            placeholder={t("rewriter.presets.namePlaceholder" as any)}
+          />
+          <button
+            type="button"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--color-text-subtle)] transition-all hover:bg-red-500/10 hover:text-red-400"
+            onClick={onDelete}
+            title={t("rewriter.presets.delete" as any)}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+              <path d="M10 11v6M14 11v6" />
+              <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Prompt preview — click to edit */}
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="flex w-full items-start gap-2 rounded-xl border border-[var(--color-border)] bg-white/[0.02] px-3 py-2 text-left transition-colors hover:border-[var(--color-border-strong)] hover:bg-white/[0.04]"
+        >
+          <CurrentIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-text-subtle)]" />
+          <span
+            className={cn(
+              "line-clamp-2 text-sm leading-relaxed",
+              preset.prompt
+                ? "text-[var(--color-text-muted)]"
+                : "text-[var(--color-text-subtle)] italic",
+            )}
+          >
+            {preset.prompt || t("rewriter.presets.promptPlaceholder" as any)}
+          </span>
+        </button>
+      </div>
+
+      {editing && (
+        <PromptModal
+          preset={preset}
+          onSave={(prompt) => { onUpdate("prompt", prompt); setEditing(false); }}
+          onCancel={() => setEditing(false)}
+        />
+      )}
+    </>
+  );
 }
 
 export function RewriterSection() {
@@ -37,16 +260,11 @@ export function RewriterSection() {
   const [presets, setPresets] = useState<RewriterPreset[]>([]);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [hotkeyApplying, setHotkeyApplying] = useState(false);
-
-  // Custom providers from transcription settings (shared)
   const [customProviders, setCustomProviders] = useState<CustomProviderConfig[]>([]);
-
-  // Model loading state
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [modelsError, setModelsError] = useState<string | null>(null);
 
-  // Load rewriter settings + custom providers from transcription
   useEffect(() => {
     let mounted = true;
     let unlistenRewriter: (() => void) | null = null;
@@ -73,13 +291,11 @@ export function RewriterSection() {
 
     void loadSettings();
 
-    // Listen for rewriter settings changes (reloads everything)
     void listenForSharedRewriterSettingsSync(loadSettings).then((cleanup) => {
       if (!mounted) { cleanup(); return; }
       unlistenRewriter = cleanup;
     });
 
-    // Listen for transcription settings changes (refreshes custom providers list)
     void listenForSharedTranscriptionSettingsSync(reloadCustomProviders).then((cleanup) => {
       if (!mounted) { cleanup(); return; }
       unlistenTranscription = cleanup;
@@ -96,26 +312,19 @@ export function RewriterSection() {
     setProvider(nextProvider);
     const preset = getProviderPreset(nextProvider, customProviders);
     setBaseUrlOverride(preset.baseUrl);
-    if (preset.defaultChatModel) {
-      setModel(preset.defaultChatModel);
-    }
-    // If custom provider, auto-fill API key
+    if (preset.defaultChatModel) setModel(preset.defaultChatModel);
     if (nextProvider.startsWith("custom_")) {
       const customId = nextProvider.slice("custom_".length);
       const cp = customProviders.find((c) => c.id === customId);
-      if (cp) {
-        setApiKeyOverride(cp.apiKey);
-      }
+      if (cp) setApiKeyOverride(cp.apiKey);
     }
     setAvailableModels([]);
     setModelsError(null);
   }
 
   async function handleLoadModels() {
-    // Resolve effective API key and base URL
     let effectiveKey = apiKeyOverride.trim();
     let effectiveUrl = baseUrlOverride.trim();
-
     if (!effectiveKey || !effectiveUrl) {
       try {
         const transcriptionSettings = await loadSharedTranscriptionSettings();
@@ -123,25 +332,14 @@ export function RewriterSection() {
         if (!effectiveUrl) effectiveUrl = transcriptionSettings.baseUrl.trim();
       } catch { /* ignore */ }
     }
-
-    if (!effectiveKey) {
-      setModelsError(t("rewriter.models.needKey" as any));
-      return;
-    }
-
-    if (!effectiveUrl) {
-      effectiveUrl = "https://api.openai.com/v1";
-    }
-
+    if (!effectiveKey) { setModelsError(t("rewriter.models.needKey" as any)); return; }
+    if (!effectiveUrl) effectiveUrl = "https://api.openai.com/v1";
     setModelsLoading(true);
     setModelsError(null);
-
     try {
       const models = await fetchAvailableModels(effectiveUrl, effectiveKey, "chat");
       setAvailableModels(models);
-      if (models.length === 0) {
-        setModelsError(t("rewriter.models.noChat" as any));
-      }
+      if (models.length === 0) setModelsError(t("rewriter.models.noChat" as any));
     } catch (error: any) {
       setModelsError(error.message || t("rewriter.models.loadError" as any));
     } finally {
@@ -150,15 +348,7 @@ export function RewriterSection() {
   }
 
   async function handleSave() {
-    const settings: RewriterSettings = {
-      hotkey,
-      provider,
-      apiKeyOverride,
-      baseUrlOverride,
-      model,
-      presets,
-    };
-
+    const settings: RewriterSettings = { hotkey, provider, apiKeyOverride, baseUrlOverride, model, presets };
     await saveSharedRewriterSettings(settings);
     setSaveMessage(t("rewriter.saved" as any));
     setTimeout(() => setSaveMessage(null), 3000);
@@ -193,7 +383,7 @@ export function RewriterSection() {
     const newPreset: RewriterPreset = {
       id: generateId(),
       name: "",
-      icon: "✏️",
+      icon: "sparkles",
       prompt: "",
       isEnabled: true,
     };
@@ -301,9 +491,7 @@ export function RewriterSection() {
                     onClick={() => void handleLoadModels()}
                     disabled={modelsLoading}
                   >
-                    {modelsLoading
-                      ? t("rewriter.models.loading" as any)
-                      : t("rewriter.models.load" as any)}
+                    {modelsLoading ? t("rewriter.models.loading" as any) : t("rewriter.models.load" as any)}
                   </Button>
                 </div>
                 {availableModels.length > 0 ? (
@@ -325,13 +513,11 @@ export function RewriterSection() {
         </div>
 
         {saveMessage ? (
-          <Notice tone="success" className="mt-4">
-            {saveMessage}
-          </Notice>
+          <Notice tone="success" className="mt-4">{saveMessage}</Notice>
         ) : null}
       </SectionCard>
 
-      {/* Presets Card */}
+      {/* Presets */}
       <SectionCard
         title={t("rewriter.presets.title" as any)}
         description={t("rewriter.presets.desc" as any)}
@@ -342,45 +528,18 @@ export function RewriterSection() {
         }
       >
         {presets.length === 0 ? (
-          <p className="text-sm text-[var(--color-text-muted)] py-4 text-center">
+          <p className="py-4 text-center text-sm text-[var(--color-text-muted)]">
             {t("rewriter.presets.empty" as any)}
           </p>
         ) : (
           <div className="space-y-3">
             {presets.map((preset) => (
-              <div
+              <PresetRow
                 key={preset.id}
-                className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] p-3"
-              >
-                <div className="flex items-center gap-2">
-                  <input
-                    className="w-10 rounded bg-transparent text-center text-lg outline-none"
-                    value={preset.icon}
-                    onChange={(e) => handleUpdatePreset(preset.id, "icon", e.target.value)}
-                    maxLength={4}
-                    title={t("rewriter.presets.icon" as any)}
-                  />
-                  <input
-                    className="flex-1 rounded border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 py-1 text-sm text-[var(--color-text-primary)] outline-none"
-                    value={preset.name}
-                    onChange={(e) => handleUpdatePreset(preset.id, "name", e.target.value)}
-                    placeholder={t("rewriter.presets.namePlaceholder" as any)}
-                  />
-                  <button
-                    className="text-xs text-[var(--color-text-muted)] hover:text-red-400 transition-colors"
-                    onClick={() => handleDeletePreset(preset.id)}
-                  >
-                    {t("rewriter.presets.delete" as any)}
-                  </button>
-                </div>
-                <textarea
-                  className="w-full resize-none rounded border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
-                  rows={2}
-                  value={preset.prompt}
-                  onChange={(e) => handleUpdatePreset(preset.id, "prompt", e.target.value)}
-                  placeholder={t("rewriter.presets.promptPlaceholder" as any)}
-                />
-              </div>
+                preset={preset}
+                onUpdate={(field, value) => handleUpdatePreset(preset.id, field, value)}
+                onDelete={() => handleDeletePreset(preset.id)}
+              />
             ))}
           </div>
         )}

@@ -3,17 +3,17 @@
 @tailwind utilities;
 
 :root {
-  --color-bg-canvas: #06080d;
-  --color-bg-elevated: #0d121b;
-  --color-surface: rgba(18, 24, 35, 0.82);
-  --color-surface-soft: rgba(255, 255, 255, 0.035);
-  --color-border: rgba(255, 255, 255, 0.1);
-  --color-border-strong: rgba(255, 255, 255, 0.18);
-  --color-text-primary: #e8edf6;
-  --color-text-muted: #98a4b8;
-  --color-text-subtle: #77839a;
-  --color-accent: #62dcc0;
-  --color-accent-strong: #4dcfb0;
+  --color-bg-canvas: #0a0e16;
+  --color-bg-elevated: #0f1520;
+  --color-surface: rgba(12, 17, 26, 0.85);
+  --color-surface-soft: rgba(255, 255, 255, 0.03);
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-border-strong: rgba(255, 255, 255, 0.12);
+  --color-text-primary: #edf0f7;
+  --color-text-muted: #8a9ab0;
+  --color-text-subtle: #6a7a8e;
+  --color-accent: #818cf8;
+  --color-accent-strong: #a5b4fc;
   --radius-xs: 10px;
   --radius-sm: 14px;
   --radius-md: 18px;
@@ -26,9 +26,9 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
-  --shadow-soft: 0 24px 50px -28px rgba(0, 0, 0, 0.9);
-  --shadow-glow: 0 20px 45px -32px rgba(91, 220, 193, 0.45);
-  --shadow-focus: 0 0 0 2px rgba(98, 220, 192, 0.45);
+  --shadow-soft: 0 24px 50px -28px rgba(0, 0, 0, 0.8);
+  --shadow-glow: 0 20px 45px -32px rgba(129, 140, 248, 0.35);
+  --shadow-focus: 0 0 0 2px rgba(129, 140, 248, 0.4);
   --blur-sm: 10px;
   --blur-md: 18px;
   --blur-lg: 28px;
@@ -37,10 +37,9 @@
   --duration-slow: 340ms;
   --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
   font-family:
+    "Outfit",
     "Segoe UI Variable Text",
-    "Avenir Next",
     "SF Pro Display",
-    "Manrope",
     sans-serif;
   color: var(--color-text-primary);
 }
@@ -95,14 +94,16 @@ body[data-window="rewriter"] #root {
   .ui-surface {
     border: 1px solid var(--color-border);
     background: var(--color-surface);
-    backdrop-filter: blur(var(--blur-md));
-    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(var(--blur-sm));
+    box-shadow:
+      0 20px 40px -20px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+      0 1px 0 0 rgba(255, 255, 255, 0.06) inset;
   }
 
   .ui-surface-soft {
     border: 1px solid var(--color-border);
     background: var(--color-surface-soft);
-    backdrop-filter: blur(var(--blur-sm));
   }
 
   .ui-interactive {
@@ -131,5 +132,10 @@ body[data-window="rewriter"] #root {
 
   .ui-subtle {
     color: var(--color-text-subtle);
+  }
+
+  @keyframes audio-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.35; transform: scale(0.8); }
   }
 }

@@ -1,7 +1,5 @@
-import { motion } from "motion/react";
 import { cn } from "../lib/cn";
 import type { AppSection, AppSectionId } from "../types/navigation";
-import { Card } from "./ui/Card";
 import { useTranslation } from "../lib/i18n";
 
 interface SidebarProps {
@@ -18,20 +16,22 @@ export function Sidebar({
   const { t } = useTranslation();
 
   return (
-    <Card className="flex h-full flex-col rounded-[var(--radius-xl)] p-4" tone="soft">
-      <Card className="flex items-center gap-3 rounded-[var(--radius-md)] px-3 py-3" tone="soft">
-        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-black">
-          <img src="/logo.png" alt={t("common.logoAlt")} className="h-10 w-10 object-cover" />
+    <div className="flex h-full flex-col">
+      {/* Logo */}
+      <div className="mb-6 flex items-center gap-2.5 px-1">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black">
+          <img src="/logo.png" alt={t("common.logoAlt")} className="h-8 w-8 object-cover" />
         </div>
         <div>
-          <p className="text-sm font-semibold tracking-wide text-[var(--color-text-primary)]">
+          <p className="text-sm font-semibold text-[var(--color-text-primary)]">
             {t("vo.title")}
           </p>
-          <p className="text-xs text-[var(--color-text-muted)]">{t("vo.subtitle")}</p>
+          <p className="text-[11px] text-[var(--color-text-subtle)]">{t("vo.subtitle")}</p>
         </div>
-      </Card>
+      </div>
 
-      <nav className="mt-5 grid gap-2">
+      {/* Nav */}
+      <nav className="grid gap-0.5">
         {items.map((item) => {
           const isActive = activeSection === item.id;
           const Icon = item.icon;
@@ -42,37 +42,31 @@ export function Sidebar({
               type="button"
               onClick={() => onSectionChange(item.id)}
               className={cn(
-                "ui-interactive ui-focus group relative overflow-hidden rounded-[var(--radius-md)] px-3 py-3 text-left",
+                "ui-interactive ui-focus group flex items-center gap-2.5 rounded-lg px-3 py-2 text-left",
                 isActive
-                  ? "text-[var(--color-text-primary)]"
-                  : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] active:text-[var(--color-text-primary)]",
+                  ? "bg-white/[0.06] text-[var(--color-text-primary)]"
+                  : "text-[var(--color-text-muted)] hover:bg-white/[0.03] hover:text-[var(--color-text-primary)]",
               )}
             >
-              {isActive ? (
-                <motion.div
-                  layoutId="active-section"
-                  className="absolute inset-0 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white/[0.08]"
-                  transition={{
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 30,
-                    mass: 0.2,
-                  }}
-                />
-              ) : null}
-              <div className="relative flex items-center gap-3">
-                <Icon className="h-4 w-4" />
-                <div>
-                  <p className="text-sm font-medium">{t(item.label as any)}</p>
-                  <p className="text-xs text-[var(--color-text-subtle)] group-hover:text-[var(--color-text-muted)]">
-                    {t(item.description as any)}
-                  </p>
-                </div>
+              {/* Active indicator */}
+              <span
+                className={cn(
+                  "h-4 w-0.5 shrink-0 rounded-full transition-all",
+                  isActive
+                    ? "bg-[var(--color-accent)]"
+                    : "bg-transparent group-hover:bg-white/[0.08]",
+                )}
+              />
+
+              <Icon className="h-4 w-4 shrink-0 opacity-80" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{t(item.label as any)}</p>
+                <p className="text-[11px] text-[var(--color-text-subtle)]">{t(item.description as any)}</p>
               </div>
             </button>
           );
         })}
       </nav>
-    </Card>
+    </div>
   );
 }

@@ -12,8 +12,21 @@ import { Button } from "../../../components/ui/Button";
 import { IconButton } from "../../../components/ui/IconButton";
 import { cn } from "../../../lib/cn";
 import { useTranslation } from "../../../lib/i18n";
-import { OverlayWaveform } from "./OverlayWaveform";
 import type { DictationOverlayPillProps } from "./types";
+
+/* ── Inline audio indicator (replaces the 10-bar waveform) ── */
+function AudioDot({ active }: { active: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+        active
+          ? "animate-[audio-pulse_1.1s_ease-in-out_infinite] bg-[var(--color-accent)]"
+          : "bg-[var(--color-text-subtle)]/50",
+      )}
+    />
+  );
+}
 
 export function DictationOverlayPill({
   state,
@@ -22,7 +35,6 @@ export function DictationOverlayPill({
   errorTitle,
   errorText,
   successText,
-  waveformLevels,
   onStart,
   onStop,
   onAbort,
@@ -39,157 +51,158 @@ export function DictationOverlayPill({
       layout
       transition={{ duration: 0.2, ease: "easeOut" }}
       className={cn(
-        "relative mx-auto w-max shrink-0 overflow-hidden rounded-[20px] border border-white/12 bg-[rgba(16,22,33,0.92)] shadow-[0_16px_32px_-16px_rgba(0,0,0,0.95)] backdrop-blur-[18px]",
-        state === "listening" && "border-emerald-200/35",
-        state === "processing" && "border-cyan-200/28",
-        state === "success" && "border-emerald-200/28 bg-[rgba(16,22,33,0.95)]",
-        state === "error" && "border-rose-200/35 bg-[rgba(16,22,33,0.98)]",
+        "relative mx-auto w-max shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[rgba(12,17,26,0.88)] shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.04)_inset] backdrop-blur-[10px]",
+        state === "listening" && "border-indigo-200/30",
+        state === "processing" && "border-violet-200/25",
+        state === "success" && "border-indigo-200/25",
+        state === "error" && "border-rose-200/30",
       )}
     >
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-emerald-200/[0.04] via-transparent to-cyan-200/[0.04]" />
+      {/* Subtle top highlight */}
+      <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
 
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.div
           key={state}
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
+          exit={{ opacity: 0, scale: 0.96 }}
           transition={{ duration: 0.15, ease: "easeOut" }}
           className="relative"
         >
-          {state === "idle" ? (
-            <div className="flex h-[56px] items-center gap-2 px-2 py-2">
+          {/* ── IDLE ── */}
+          {state === "idle" && (
+            <div className="flex h-11 items-center px-2 py-1.5">
               {interactive ? (
                 <IconButton
                   icon={<Mic className="h-4 w-4" />}
                   label={t("overlay.actions.start")}
                   tone="accent"
                   onClick={onStart}
-                  className="h-10 w-10 shrink-0 rounded-[14px]"
+                  className="h-9 w-9 rounded-xl"
                 />
               ) : (
-                <div className="grid h-10 w-10 shrink-0 place-content-center rounded-[14px] border border-white/15 bg-white/[0.04] text-[var(--color-text-muted)]">
+                <div className="grid h-9 w-9 shrink-0 place-content-center rounded-xl border border-white/12 bg-white/[0.04] text-[var(--color-text-muted)]">
                   <Mic className="h-4 w-4" />
                 </div>
               )}
-              <div className="min-w-0 pr-2">
-                <div className="flex h-[40px] items-center overflow-hidden rounded-[14px] border border-white/10 bg-white/[0.03] px-3.5">
-                  <OverlayWaveform active={false} levels={waveformLevels} className="gap-1.5" />
-                </div>
-              </div>
             </div>
-          ) : null}
+          )}
 
-          {state === "listening" ? (
-            <div className="flex h-[56px] items-center gap-2 px-2 py-2">
-              <IconButton
-                icon={<Square className="h-3.5 w-3.5 fill-current" />}
-                label={t("overlay.actions.stop")}
-                tone="accent"
+          {/* ── LISTENING ── */}
+          {state === "listening" && (
+            <div className="flex h-11 items-center gap-1.5 px-2 py-1.5">
+              {/* Stop button with pulsing dot */}
+              <button
+                type="button"
+                aria-label={t("overlay.actions.stop")}
                 onClick={onStop}
-                className="h-10 w-10 shrink-0 rounded-[14px]"
-              />
-
-              <div className="min-w-0 pr-1">
-                <div className="flex h-[40px] items-center gap-3 overflow-hidden rounded-[14px] border border-white/10 bg-white/[0.03] px-3.5">
-                  <div className="min-w-[80px] shrink-0 overflow-hidden">
-                    <OverlayWaveform active levels={waveformLevels} className="min-w-0 gap-1.5" />
-                  </div>
-                  <span className="shrink-0 font-mono text-[11px] font-medium tracking-[0.04em] text-[var(--color-text-muted)]">
-                    {timerLabel}
+                className="ui-interactive ui-focus flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-indigo-200/40 bg-indigo-200/12 text-indigo-100 hover:bg-indigo-200/20 active:scale-95"
+              >
+                <span className="relative flex h-3.5 w-3.5 items-center justify-center">
+                  {/* Pulsing dot sits top-right of the square icon */}
+                  <span className="absolute -top-0.5 -right-0.5 flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-[audio-pulse_1.1s_ease-in-out_infinite] rounded-full bg-[var(--color-accent)] opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" />
                   </span>
-                </div>
+                  <Square className="h-3 w-3 fill-current" />
+                </span>
+              </button>
+
+              {/* Status bar */}
+              <div className="flex h-9 items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3">
+                <AudioDot active />
+                <span className="font-mono text-[11px] font-medium tracking-[0.05em] text-[var(--color-text-muted)]">
+                  {timerLabel}
+                </span>
               </div>
 
-              {interactive ? (
-                <div className="pr-1">
-                  <IconButton
-                    icon={<X className="h-3.5 w-3.5" />}
-                    label={t("overlay.actions.abort")}
-                    onClick={onAbort}
-                    className="h-8 w-8 shrink-0 rounded-[10px]"
-                  />
-                </div>
-              ) : null}
+              {interactive && (
+                <IconButton
+                  icon={<X className="h-3.5 w-3.5" />}
+                  label={t("overlay.actions.abort")}
+                  onClick={onAbort}
+                  className="h-9 w-9 shrink-0 rounded-xl"
+                />
+              )}
             </div>
-          ) : null}
+          )}
 
-          {state === "processing" ? (
-            <div className="flex h-[56px] items-center gap-2 px-2 py-2">
+          {/* ── PROCESSING ── */}
+          {state === "processing" && (
+            <div className="flex h-11 items-center gap-2 px-2 py-1.5">
               <motion.div
                 animate={{ rotate: 360 }}
-                transition={{ repeat: Number.POSITIVE_INFINITY, duration: 1, ease: "linear" }}
-                className="grid h-10 w-10 shrink-0 place-content-center rounded-[14px] border border-cyan-200/28 bg-cyan-200/10 text-cyan-100"
+                transition={{ repeat: Number.POSITIVE_INFINITY, duration: 0.9, ease: "linear" }}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-200/25 bg-violet-200/8 text-violet-100"
               >
                 <LoaderCircle className="h-4 w-4" />
               </motion.div>
 
-              <div className="min-w-[120px] px-2 text-center">
-                <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
+              <div className="flex h-9 items-center rounded-xl border border-white/8 bg-white/[0.03] px-3">
+                <span className="text-sm font-medium text-[var(--color-text-muted)]">
                   {t("overlay.processing")}
-                </p>
+                </span>
               </div>
 
-              {interactive ? (
-                <div className="flex items-center pr-1">
-                  <IconButton
-                    icon={<X className="h-3.5 w-3.5" />}
-                    label={t("overlay.actions.abort")}
-                    onClick={onAbort}
-                    className="h-8 w-8 shrink-0 rounded-[10px]"
-                  />
-                </div>
-              ) : null}
+              {interactive && (
+                <IconButton
+                  icon={<X className="h-3.5 w-3.5" />}
+                  label={t("overlay.actions.abort")}
+                  onClick={onAbort}
+                  className="h-9 w-9 shrink-0 rounded-xl"
+                />
+              )}
             </div>
-          ) : null}
+          )}
 
-          {state === "success" ? (
-            <div className="flex h-[56px] items-center gap-2 bg-emerald-200/10 px-2.5 py-2">
-              <div className="grid h-10 w-10 shrink-0 place-content-center rounded-[14px] border border-emerald-200/28 bg-emerald-200/15 text-emerald-100">
+          {/* ── SUCCESS ── */}
+          {state === "success" && (
+            <div className="flex h-11 items-center gap-2 px-2 py-1.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-indigo-200/25 bg-indigo-200/10 text-indigo-100">
                 <CheckCircle2 className="h-4 w-4" />
               </div>
-              <div className="min-w-[120px] px-2 text-left">
-                <p className="truncate text-sm font-semibold text-emerald-100">
-                  {resolvedSuccessText}
-                </p>
-              </div>
+              <span className="mr-2 text-sm font-medium text-indigo-100">
+                {resolvedSuccessText}
+              </span>
             </div>
-          ) : null}
+          )}
 
-          {state === "error" ? (
-            <div className="bg-rose-200/[0.08] px-3 py-2.5">
-              <div className="grid grid-cols-[40px,1fr,30px] items-center gap-3">
-                <div className="grid h-10 w-10 shrink-0 place-content-center rounded-[14px] border border-rose-200/35 bg-rose-200/14 text-rose-100">
-                  <AlertCircle className="h-4 w-4" />
+          {/* ── ERROR ── */}
+          {state === "error" && (
+            <div className="px-3 py-2">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-rose-200/30 bg-rose-200/10 text-rose-100">
+                  <AlertCircle className="h-3.5 w-3.5" />
                 </div>
-                <div className="min-w-[180px]">
+                <div className="min-w-0 max-w-[160px]">
                   <p className="truncate text-xs font-semibold text-rose-100">{resolvedErrorTitle}</p>
-                  <p className="mt-0.5 max-w-[180px] text-[11px] leading-tight text-rose-100/75">{resolvedErrorText}</p>
+                  <p className="truncate text-[11px] text-rose-100/65">{resolvedErrorText}</p>
                 </div>
-                {interactive ? (
+                {interactive && (
                   <IconButton
-                    icon={<X className="h-3.5 w-3.5" />}
+                    icon={<X className="h-3 w-3" />}
                     label={t("overlay.actions.dismiss")}
                     onClick={onAbort ?? onOpenSettings}
-                    className="h-8 w-8 shrink-0 self-start rounded-[10px]"
+                    className="h-8 w-8 shrink-0 rounded-lg"
                   />
-                ) : null}
+                )}
               </div>
-              {interactive && onRetry ? (
-                <div className="mt-2.5 flex justify-end">
+              {interactive && onRetry && (
+                <div className="mt-1.5 flex justify-end">
                   <Button
                     size="sm"
                     variant="secondary"
-                    leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
+                    leftIcon={<RotateCcw className="h-3 w-3" />}
                     onClick={onRetry}
-                    className="h-7 rounded-[10px] border-white/5 bg-rose-200/10 px-2.5 text-xs text-rose-100 hover:bg-rose-200/20"
+                    className="h-7 rounded-lg border-white/[0.06] bg-rose-200/8 px-2.5 text-xs text-rose-100 hover:bg-rose-200/15"
                   >
                     {t("overlay.actions.retry")}
                   </Button>
                 </div>
-              ) : null}
+              )}
             </div>
-          ) : null}
+          )}
         </motion.div>
       </AnimatePresence>
     </motion.div>

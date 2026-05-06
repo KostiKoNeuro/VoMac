@@ -12,7 +12,6 @@ export interface DictationOverlayPillProps {
   errorTitle?: string;
   errorText?: string;
   successText?: string;
-  waveformLevels?: number[];
   onStart?: () => void;
   onStop?: () => void;
   onAbort?: () => void;

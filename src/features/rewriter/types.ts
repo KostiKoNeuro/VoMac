@@ -1,7 +1,9 @@
+import type { RewriterIconKey } from "./config/rewriterIcons";
+
 export interface RewriterPreset {
   id: string;
   name: string;
-  icon: string;
+  icon: RewriterIconKey;
   prompt: string;
   isEnabled: boolean;
 }

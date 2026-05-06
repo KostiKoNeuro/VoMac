@@ -25,7 +25,7 @@ export function Toggle({
       className={cn(
         "ui-interactive ui-focus relative inline-flex h-6 w-11 items-center rounded-full border",
         checked
-          ? "border-emerald-200/60 bg-emerald-200/85"
+          ? "border-indigo-200/60 bg-indigo-200/85"
           : "border-[var(--color-border)] bg-white/[0.07]",
         disabled ? "cursor-not-allowed opacity-50" : "hover:border-[var(--color-border-strong)]",
       )}

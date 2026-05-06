@@ -16,7 +16,7 @@ interface ButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
 
 const variantClassMap: Record<ButtonVariant, string> = {
   primary:
-    "border border-emerald-200/45 bg-gradient-to-r from-emerald-200 to-teal-300 text-zinc-900 shadow-[var(--shadow-glow)] hover:brightness-105 active:brightness-95",
+    "border border-indigo-200/45 bg-gradient-to-r from-indigo-200 to-violet-300 text-zinc-900 shadow-[var(--shadow-glow)] hover:brightness-105 active:brightness-95",
   secondary:
     "border border-[var(--color-border)] bg-white/[0.04] text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] hover:bg-white/[0.08] active:bg-white/[0.12]",
   ghost:

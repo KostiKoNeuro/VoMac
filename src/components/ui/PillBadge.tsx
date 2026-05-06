@@ -11,8 +11,8 @@ interface PillBadgeProps {
 
 const toneClassMap: Record<PillBadgeTone, string> = {
   neutral: "border-white/14 bg-white/[0.06] text-[var(--color-text-muted)]",
-  accent: "border-cyan-200/30 bg-cyan-200/12 text-cyan-100",
-  success: "border-emerald-200/30 bg-emerald-200/12 text-emerald-100",
+  accent: "border-violet-200/30 bg-violet-200/12 text-violet-100",
+  success: "border-indigo-200/30 bg-indigo-200/12 text-indigo-100",
   error: "border-rose-200/30 bg-rose-200/12 text-rose-100",
 };
 

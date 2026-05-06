@@ -104,14 +104,14 @@ export function HotkeyInput({
         className={cn(
           "ui-interactive flex h-10 cursor-text items-center justify-between rounded-[var(--radius-sm)] border px-3 text-sm",
           isRecording
-            ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-300 ring-2 ring-emerald-400/20"
+            ? "border-indigo-400/50 bg-indigo-400/10 text-indigo-300 ring-2 ring-indigo-400/20"
             : "border-[var(--color-border)] bg-white/[0.03] text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)]",
         )}
         onClick={() => setIsRecording(true)}
       >
         <span className={cn(
           "truncate",
-          isRecording && currentKeys.length === 0 ? "animate-pulse text-emerald-300/60" : "",
+          isRecording && currentKeys.length === 0 ? "animate-pulse text-indigo-300/60" : "",
         )}>
           {displayValue}
         </span>
@@ -124,7 +124,7 @@ export function HotkeyInput({
                 event.stopPropagation();
                 setIsRecording(false);
               }}
-              className="h-6 w-6 rounded-md text-emerald-300 hover:bg-emerald-400/20"
+              className="h-6 w-6 rounded-md text-indigo-300 hover:bg-indigo-400/20"
             />
           ) : (
             <Keyboard className="h-4 w-4 text-[var(--color-text-subtle)]" />
@@ -132,7 +132,7 @@ export function HotkeyInput({
         </div>
       </div>
       {hint && !isRecording ? <span className="ui-subtle text-xs">{hint}</span> : null}
-      {isRecording ? <span className="text-xs text-emerald-400/80">{t("recording.hotkey.capture.pressHint")}</span> : null}
+      {isRecording ? <span className="text-xs text-indigo-400/80">{t("recording.hotkey.capture.pressHint")}</span> : null}
     </div>
   );
 }

@@ -12,8 +12,8 @@ interface NoticeProps {
 }
 
 const toneClassMap: Record<NoticeTone, string> = {
-  info: "border-cyan-200/20 bg-cyan-200/10 text-cyan-100/85",
-  success: "border-emerald-200/25 bg-emerald-200/10 text-emerald-100/85",
+  info: "border-violet-200/20 bg-violet-200/10 text-violet-100/85",
+  success: "border-indigo-200/25 bg-indigo-200/10 text-indigo-100/85",
   warning: "border-amber-200/25 bg-amber-200/10 text-amber-100/85",
   error: "border-rose-200/30 bg-rose-200/10 text-rose-100/88",
 };

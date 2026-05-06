@@ -28,7 +28,7 @@ export function IconButton({
       className={cn(
         "ui-interactive ui-focus inline-grid h-9 w-9 place-content-center rounded-[var(--radius-sm)] border",
         tone === "accent"
-          ? "border-emerald-200/40 bg-emerald-200/15 text-emerald-100 hover:bg-emerald-200/22"
+          ? "border-indigo-200/40 bg-indigo-200/15 text-indigo-100 hover:bg-indigo-200/22"
           : "border-[var(--color-border)] bg-white/[0.035] text-[var(--color-text-muted)] hover:border-[var(--color-border-strong)] hover:bg-white/[0.08] hover:text-[var(--color-text-primary)]",
         "disabled:cursor-not-allowed disabled:opacity-50",
         className,

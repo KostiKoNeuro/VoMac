@@ -19,7 +19,7 @@ export function AboutSection() {
         description={t("about.desc")}
       >
         <div className="flex flex-col items-center justify-center space-y-4 py-8">
-          <div className="flex size-24 items-center justify-center overflow-hidden rounded-2xl bg-black shadow-[0_0_30px_rgba(98,220,192,0.15)] ring-1 ring-white/10">
+          <div className="flex size-24 items-center justify-center overflow-hidden rounded-2xl bg-black shadow-[0_0_30px_rgba(129,140,248,0.15)] ring-1 ring-white/10">
             <img src="/logo.png" alt={t("common.logoAlt")} className="h-full w-full object-cover" />
           </div>
           <div className="text-center">

@@ -1,4 +1,7 @@
 import type { RewriterPreset, RewriterSettings } from "../types";
+import { REWRITER_ICONS, type RewriterIconKey } from "./rewriterIcons";
+
+const VALID_ICON_KEYS = new Set(REWRITER_ICONS.map((e) => e.key)) as Set<RewriterIconKey>;
 
 const STORAGE_KEY = "vo.rewriter.settings";
 
@@ -46,7 +49,7 @@ export function loadRewriterSettings(): RewriterSettings {
           ? parsed.model
           : defaultRewriterSettings.model,
       presets: Array.isArray(parsed.presets)
-        ? parsed.presets.filter(isValidPreset)
+        ? parsed.presets.map(migratePreset).filter(Boolean) as RewriterPreset[]
         : defaultRewriterSettings.presets,
     };
   } catch {
@@ -62,6 +65,14 @@ export function saveRewriterSettings(settings: RewriterSettings): void {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
 }
 
+function migratePresetIcon(icon: string): RewriterIconKey {
+  // Old emoji-based presets had freeform strings — migrate to a default
+  if (VALID_ICON_KEYS.has(icon as RewriterIconKey)) {
+    return icon as RewriterIconKey;
+  }
+  return "sparkles";
+}
+
 function isValidPreset(value: unknown): value is RewriterPreset {
   if (!value || typeof value !== "object") {
     return false;
@@ -71,8 +82,16 @@ function isValidPreset(value: unknown): value is RewriterPreset {
   return (
     typeof candidate.id === "string" &&
     typeof candidate.name === "string" &&
-    typeof candidate.icon === "string" &&
     typeof candidate.prompt === "string" &&
     typeof candidate.isEnabled === "boolean"
   );
+}
+
+function migratePreset(value: unknown): RewriterPreset | null {
+  if (!isValidPreset(value)) return null;
+  const p = value as RewriterPreset;
+  return {
+    ...p,
+    icon: migratePresetIcon(p.icon),
+  };
 }

@@ -18,7 +18,6 @@ export function OverlayPreviewDemo({ triggerSignal }: OverlayPreviewDemoProps) {
   const { settings } = useTranscriptionSettings();
   const {
     overlayState,
-    levels,
     timerLabel,
     successLabel,
     errorTitle,
@@ -123,14 +122,10 @@ export function OverlayPreviewDemo({ triggerSignal }: OverlayPreviewDemoProps) {
         className="mt-5 rounded-[34px] border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] p-5"
         tone="glass"
       >
-        <div className="relative flex min-h-[190px] items-center justify-center overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(60%_120%_at_50%_20%,rgba(97,223,195,0.12),rgba(10,12,17,0.7))] p-5">
-          <div className="pointer-events-none absolute -top-16 h-40 w-40 rounded-full bg-cyan-200/15 blur-[52px]" />
-          <div className="pointer-events-none absolute bottom-0 right-[20%] h-28 w-28 rounded-full bg-emerald-200/14 blur-[48px]" />
-
+        <div className="relative flex min-h-[90px] items-center justify-center overflow-hidden rounded-[24px] border border-white/8 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(129,140,248,0.08),transparent_70%)] p-4">
           <DictationOverlayPill
             state={overlayState}
             timerLabel={timerLabel}
-            waveformLevels={levels}
             errorTitle={errorTitle}
             errorText={errorText ?? undefined}
             successText={successLabel}

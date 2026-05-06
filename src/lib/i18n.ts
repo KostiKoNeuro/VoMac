@@ -4,9 +4,11 @@ import { loadSharedGeneralSettings, listenForSharedGeneralSettingsSync } from ".
 export type AppLanguage = "en" | "ru";
 
 const en = {
-  "vo.title": "VO",
+  "vo.title": "Dicta",
   "vo.subtitle": "Windows Dictation",
-  "common.logoAlt": "VO logo",
+  "common.logoAlt": "Dicta logo",
+  "common.cancel": "Cancel",
+  "common.save": "Save",
   "common.language.en": "English",
   "common.language.ru": "Русский",
 
@@ -23,14 +25,14 @@ const en = {
 
   "shell.title": "Product shell",
 
-  "about.title": "About VO",
+  "about.title": "About Dicta",
   "about.desc": "System-wide voice dictation for Windows with an overlay-driven transcription flow.",
   "about.version": "Version 0.1.0-beta",
   "about.badge": "Beta Release",
   "about.dev.label": "Developed by",
   "about.dev.name": "KostiKo / Botanutyi Kostya",
   "about.telegram": "Telegram",
-  "about.blurb": "VO is a clean, minimal dictation overlay designed specifically for Windows. Press the global hotkey anywhere, speak, and insert text directly into any application.",
+  "about.blurb": "Dicta is a clean, minimal dictation overlay designed specifically for Windows. Press the global hotkey anywhere, speak, and insert text directly into any application.",
 
   "general.title": "General",
   "general.desc": "Core desktop behavior and default shell preferences.",
@@ -40,7 +42,7 @@ const en = {
   "general.profile.desc": "Friendly name used for this machine and future sync.",
   "general.profile.inputLabel": "Profile",
   "general.autostart.label": "Start with Windows",
-  "general.autostart.desc": "Automatically launch VO when your session starts.",
+  "general.autostart.desc": "Automatically launch Dicta when your session starts.",
   "general.autostart.aria": "Enable start with Windows",
   "general.tray.label": "Close to tray",
   "general.tray.desc": "Keep the app running in the background when closed.",
@@ -104,7 +106,7 @@ const en = {
   "transcription.apiKey.inputLabel": "API key",
   "transcription.apiKey.placeholder": "sk-...",
   "transcription.model.label": "Model",
-  "transcription.model.desc": "Speech-to-text model that VO should call after recording.",
+  "transcription.model.desc": "Speech-to-text model that Dicta should call after recording.",
   "transcription.model.inputLabel": "Model",
   "transcription.models.load": "Load models",
   "transcription.models.loading": "Loading...",
@@ -225,6 +227,9 @@ const en = {
   "rewriter.presets.promptPlaceholder": "e.g. Translate this text to English",
   "rewriter.presets.delete": "Delete",
   "rewriter.presets.namePlaceholder": "e.g. Translate EN",
+  "rewriter.presets.untitled": "Untitled preset",
+  "rewriter.presets.promptEditor.title": "Edit instruction",
+  "rewriter.presets.promptEditor.hint": "Ctrl+Enter to save · Escape to cancel",
 
   "rewriter.overlay.placeholder": "Describe what to do with the text...",
   "rewriter.overlay.send": "Send",
@@ -240,9 +245,11 @@ export type TranslationKey = keyof typeof en;
 type TranslationDictionary = Record<TranslationKey, string>;
 
 const ru: TranslationDictionary = {
-  "vo.title": "VO",
+  "vo.title": "Dicta",
   "vo.subtitle": "Диктовка для Windows",
-  "common.logoAlt": "Логотип VO",
+  "common.logoAlt": "Логотип Dicta",
+  "common.cancel": "Отмена",
+  "common.save": "Сохранить",
   "common.language.en": "Английский",
   "common.language.ru": "Русский",
 
@@ -259,14 +266,14 @@ const ru: TranslationDictionary = {
 
   "shell.title": "Оболочка",
 
-  "about.title": "О VO",
+  "about.title": "О Dicta",
   "about.desc": "Глобальная голосовая диктовка для Windows с удобным оверлеем.",
   "about.version": "Версия 0.1.0-beta",
   "about.badge": "Бета-версия",
   "about.dev.label": "Разработчик",
   "about.dev.name": "Ботанутый Костя",
   "about.telegram": "Telegram",
-  "about.blurb": "VO — это чистый, минималистичный оверлей диктовки, созданный специально для Windows. Нажмите глобальный хоткей в любом месте, скажите текст, и он будет вставлен прямо в активное приложение.",
+  "about.blurb": "Dicta — это чистый, минималистичный оверлей диктовки, созданный специально для Windows. Нажмите глобальный хоткей в любом месте, скажите текст, и он будет вставлен прямо в активное приложение.",
 
   "general.title": "Основные",
   "general.desc": "Основные настройки поведения и оболочки.",
@@ -276,7 +283,7 @@ const ru: TranslationDictionary = {
   "general.profile.desc": "Имя для этого компьютера и будущей синхронизации.",
   "general.profile.inputLabel": "Профиль",
   "general.autostart.label": "Запускать вместе с Windows",
-  "general.autostart.desc": "Автоматически запускать VO при входе в систему.",
+  "general.autostart.desc": "Автоматически запускать Dicta при входе в систему.",
   "general.autostart.aria": "Включить запуск вместе с Windows",
   "general.tray.label": "Сворачивать в трей",
   "general.tray.desc": "Оставлять приложение работать в фоне при закрытии.",
@@ -340,7 +347,7 @@ const ru: TranslationDictionary = {
   "transcription.apiKey.inputLabel": "API-ключ",
   "transcription.apiKey.placeholder": "sk-...",
   "transcription.model.label": "Модель",
-  "transcription.model.desc": "Модель распознавания речи, которую VO вызывает после записи.",
+  "transcription.model.desc": "Модель распознавания речи, которую Dicta вызывает после записи.",
   "transcription.model.inputLabel": "Модель",
   "transcription.models.load": "Загрузить модели",
   "transcription.models.loading": "Загрузка...",
@@ -461,6 +468,9 @@ const ru: TranslationDictionary = {
   "rewriter.presets.promptPlaceholder": "напр. Переведи этот текст на английский",
   "rewriter.presets.delete": "Удалить",
   "rewriter.presets.namePlaceholder": "напр. Перевод EN",
+  "rewriter.presets.untitled": "Без названия",
+  "rewriter.presets.promptEditor.title": "Редактирование инструкции",
+  "rewriter.presets.promptEditor.hint": "Ctrl+Enter чтобы сохранить · Escape чтобы отменить",
 
   "rewriter.overlay.placeholder": "Опишите, что сделать с текстом...",
   "rewriter.overlay.send": "Отправить",

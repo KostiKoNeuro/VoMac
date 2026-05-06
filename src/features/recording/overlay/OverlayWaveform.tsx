@@ -18,7 +18,7 @@ export function OverlayWaveform({ active, levels, className }: OverlayWaveformPr
       {bars.map((level, index) => (
         <motion.span
           key={`bar-${index}`}
-          className="w-1.5 rounded-full bg-gradient-to-t from-emerald-300/95 to-cyan-200/95"
+          className="w-1.5 rounded-full bg-gradient-to-t from-indigo-300/95 to-violet-200/95"
           style={{ height: baseHeights[index] ?? 24, transformOrigin: "50% 100%" }}
           animate={
             !active
