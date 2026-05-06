@@ -90,6 +90,20 @@ function normalizeTranscriptionError(error: unknown): string {
   return translate("overlay.error.defaultText");
 }
 
+function assertRecordingApiAvailable(): void {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error("Microphone capture is not available in this WebView.");
+  }
+
+  if (typeof window.MediaRecorder === "undefined") {
+    throw new Error("Audio recording is not available in this WebView.");
+  }
+
+  if (typeof window.AudioContext === "undefined") {
+    throw new Error("Audio monitoring is not available in this WebView.");
+  }
+}
+
 export function useRecordingSession({
   transcriptionSettings,
   getLatestTranscriptionSettings,
@@ -356,6 +370,7 @@ export function useRecordingSession({
     });
 
     try {
+      assertRecordingApiAvailable();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       if (!flightControllerRef.current.isCurrent(sessionId)) {
         isStartingRef.current = false;
