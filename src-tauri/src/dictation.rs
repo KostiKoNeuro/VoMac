@@ -236,54 +236,41 @@ fn build_trigger_context<R: Runtime>(
 ) -> tauri::Result<TriggerContext> {
     #[cfg(target_os = "windows")]
     {
-        let mut anchor = capture_anchor_from_foreground_window();
-        let (monitor_position, monitor_size, scale_factor) =
-            resolve_monitor_geometry(app_handle, &anchor);
+        let (monitor_position, monitor_size) =
+            resolve_monitor_geometry_simple(app_handle);
 
-        if anchor.mode == "monitor-center" {
-            anchor.x = monitor_position.x + monitor_size.width as i32 / 2;
-            anchor.y = monitor_position.y + OVERLAY_EDGE_PADDING;
-        }
+        // Place overlay at bottom center of the monitor
+        let window_x = monitor_position.0
+            + (monitor_size.0 as i32 / 2)
+            - (OVERLAY_WINDOW_WIDTH as i32 / 2);
+        let window_y = monitor_position.1
+            + (monitor_size.1 as i32)
+            - OVERLAY_EDGE_PADDING
+            - OVERLAY_WINDOW_HEIGHT as i32;
 
+        // Capture target window for text insertion
+        let anchor = capture_anchor_from_foreground_window();
         let target = captured_target_from_anchor(&anchor);
-        log_target_capture("shortcut", anchor.mode, target);
-
-        let min_x = monitor_position.x + OVERLAY_EDGE_PADDING;
-        let max_x = monitor_position.x + monitor_size.width as i32
-            - OVERLAY_WINDOW_WIDTH as i32
-            - OVERLAY_EDGE_PADDING;
-        let min_y = monitor_position.y + OVERLAY_EDGE_PADDING;
-        let max_y = monitor_position.y + monitor_size.height as i32
-            - OVERLAY_WINDOW_HEIGHT as i32
-            - OVERLAY_EDGE_PADDING;
-        let ideal_x = anchor.x - (OVERLAY_WINDOW_WIDTH as i32 / 2);
-        let ideal_y = if anchor.mode == "monitor-center" {
-            monitor_position.y + OVERLAY_EDGE_PADDING
-        } else {
-            anchor.y - OVERLAY_WINDOW_HEIGHT as i32 - OVERLAY_EDGE_PADDING
-        };
-
-        let payload = DictationTriggeredPayload {
-            sequence: next_sequence(state),
-            anchor: AnchorPayload {
-                x: anchor.x,
-                y: anchor.y,
-                mode: anchor.mode.to_string(),
-            },
-            monitor: MonitorPayload {
-                x: monitor_position.x,
-                y: monitor_position.y,
-                width: monitor_size.width,
-                height: monitor_size.height,
-                scale_factor,
-            },
-        };
 
         return Ok(TriggerContext {
-            window_x: clamp(ideal_x, min_x, max_x.max(min_x)),
-            window_y: clamp(ideal_y, min_y, max_y.max(min_y)),
+            window_x,
+            window_y,
             target,
-            payload,
+            payload: DictationTriggeredPayload {
+                sequence: next_sequence(state),
+                anchor: AnchorPayload {
+                    x: window_x,
+                    y: window_y,
+                    mode: "bottom-center".to_string(),
+                },
+                monitor: MonitorPayload {
+                    x: monitor_position.0,
+                    y: monitor_position.1,
+                    width: monitor_size.0,
+                    height: monitor_size.1,
+                    scale_factor: 1.0,
+                },
+            },
             created_at: Instant::now(),
         });
     }
@@ -293,9 +280,9 @@ fn build_trigger_context<R: Runtime>(
         payload: DictationTriggeredPayload {
             sequence: next_sequence(state),
             anchor: AnchorPayload {
-                x: 720,
-                y: 24,
-                mode: "monitor-center".to_string(),
+                x: 0,
+                y: 0,
+                mode: "bottom-center".to_string(),
             },
             monitor: MonitorPayload {
                 x: 0,
@@ -305,8 +292,8 @@ fn build_trigger_context<R: Runtime>(
                 scale_factor: 1.0,
             },
         },
-        window_x: 602,
-        window_y: 12,
+        window_x: 540,
+        window_y: 800,
         target: CapturedTarget::default(),
         created_at: Instant::now(),
     })
@@ -419,62 +406,37 @@ fn monitor_lookup_window<R: Runtime>(app_handle: &AppHandle<R>) -> Option<Webvie
 }
 
 #[cfg(target_os = "windows")]
-fn resolve_monitor_geometry<R: Runtime>(
+/// Returns (x, y, width, height) of the primary monitor's work area.
+fn resolve_monitor_geometry_simple<R: Runtime>(
     app_handle: &AppHandle<R>,
-    anchor: &AnchorSnapshot,
-) -> (PhysicalPosition<i32>, tauri::PhysicalSize<u32>, f64) {
-    let tauri_monitor = monitor_lookup_window(app_handle)
-        .and_then(|window| {
-            window
-                .monitor_from_point(
-                    anchor.monitor_lookup_point.0 as f64,
-                    anchor.monitor_lookup_point.1 as f64,
-                )
-                .ok()
-                .flatten()
-        })
-        .or_else(|| {
-            monitor_lookup_window(app_handle).and_then(|window| {
-                window
-                    .monitor_from_point(anchor.x as f64, anchor.y as f64)
-                    .ok()
-                    .flatten()
-            })
-        })
-        .or_else(|| {
-            app_handle
-                .get_webview_window(MAIN_WINDOW_LABEL)
-                .and_then(|window| window.current_monitor().ok().flatten())
-        })
+) -> ((i32, i32), (u32, u32)) {
+    // Try main window's monitor first
+    let monitor = app_handle
+        .get_webview_window(MAIN_WINDOW_LABEL)
+        .and_then(|w| w.current_monitor().ok().flatten())
         .or_else(|| {
             app_handle
                 .get_webview_window(OVERLAY_WINDOW_LABEL)
-                .and_then(|window| window.current_monitor().ok().flatten())
+                .and_then(|w| w.current_monitor().ok().flatten())
         });
 
-    if let Some(work_area) = anchor.monitor_work_area {
-        let scale_factor = tauri_monitor
-            .as_ref()
-            .map(|monitor| monitor.scale_factor())
-            .unwrap_or(1.0);
-
-        return (
-            PhysicalPosition::new(work_area.x, work_area.y),
-            tauri::PhysicalSize::new(work_area.width, work_area.height),
-            scale_factor,
-        );
+    if let Some(m) = monitor {
+        let wa = m.work_area();
+        return ((wa.position.x, wa.position.y), (wa.size.width, wa.size.height));
     }
 
-    if let Some(monitor) = tauri_monitor {
-        let work_area = monitor.work_area();
-        return (work_area.position, work_area.size, monitor.scale_factor());
+    // Fallback: use cursor position to find monitor
+    let cursor = get_cursor_pos();
+    if let Some(window) = app_handle.get_webview_window(MAIN_WINDOW_LABEL) {
+        if let Ok(Some(m)) =
+            window.monitor_from_point(cursor.0 as f64, cursor.1 as f64)
+        {
+            let wa = m.work_area();
+            return ((wa.position.x, wa.position.y), (wa.size.width, wa.size.height));
+        }
     }
 
-    (
-        PhysicalPosition::new(0, 0),
-        tauri::PhysicalSize::new(1440, 900),
-        1.0,
-    )
+    ((0, 0), (1920, 1080))
 }
 
 #[cfg(target_os = "windows")]
@@ -484,17 +446,6 @@ struct AnchorSnapshot {
     mode: &'static str,
     foreground_hwnd: isize,
     focused_hwnd: isize,
-    monitor_lookup_point: (i32, i32),
-    monitor_work_area: Option<MonitorWorkArea>,
-}
-
-#[cfg(target_os = "windows")]
-#[derive(Clone, Copy)]
-struct MonitorWorkArea {
-    x: i32,
-    y: i32,
-    width: u32,
-    height: u32,
 }
 
 #[cfg(target_os = "windows")]
@@ -515,6 +466,19 @@ fn log_target_capture(reason: &str, mode: &str, target: CapturedTarget) {
 }
 
 #[cfg(target_os = "windows")]
+fn get_cursor_pos() -> (i32, i32) {
+    use windows_sys::Win32::Foundation::POINT;
+    use windows_sys::Win32::UI::WindowsAndMessaging::GetCursorPos;
+
+    let mut point = POINT { x: 0, y: 0 };
+    if unsafe { GetCursorPos(&mut point) } != 0 {
+        (point.x, point.y)
+    } else {
+        (0, 0)
+    }
+}
+
+#[cfg(target_os = "windows")]
 fn capture_anchor_from_foreground_window() -> AnchorSnapshot {
     use std::mem::size_of;
     use std::ptr::null_mut;
@@ -532,14 +496,7 @@ fn capture_anchor_from_foreground_window() -> AnchorSnapshot {
         ((rect.left + rect.right) / 2, rect.top)
     }
 
-    fn work_area_lookup_point(work_area: MonitorWorkArea) -> (i32, i32) {
-        (
-            work_area.x + (work_area.width as i32 / 2),
-            work_area.y + (work_area.height as i32 / 2),
-        )
-    }
-
-    fn monitor_work_area_from_handle(hmonitor: HMONITOR) -> Option<MonitorWorkArea> {
+    fn monitor_work_area_from_handle(hmonitor: HMONITOR) -> Option<(i32, i32, u32, u32)> {
         if hmonitor.is_null() {
             return None;
         }
@@ -566,36 +523,33 @@ fn capture_anchor_from_foreground_window() -> AnchorSnapshot {
         }
 
         let work_area = monitor_info.rcWork;
-        Some(MonitorWorkArea {
-            x: work_area.left,
-            y: work_area.top,
-            width: (work_area.right - work_area.left).max(0) as u32,
-            height: (work_area.bottom - work_area.top).max(0) as u32,
-        })
+        Some((
+            work_area.left,
+            work_area.top,
+            (work_area.right - work_area.left).max(0) as u32,
+            (work_area.bottom - work_area.top).max(0) as u32,
+        ))
     }
 
-    fn monitor_work_area_from_point(point: POINT) -> Option<MonitorWorkArea> {
+    fn monitor_work_area_from_point(point: POINT) -> Option<(i32, i32, u32, u32)> {
         monitor_work_area_from_handle(unsafe { MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST) })
     }
 
-    fn monitor_work_area_from_window(hwnd: *mut core::ffi::c_void) -> Option<MonitorWorkArea> {
+    fn monitor_work_area_from_window(hwnd: *mut core::ffi::c_void) -> Option<(i32, i32, u32, u32)> {
         if hwnd.is_null() {
             return None;
         }
-
         monitor_work_area_from_handle(unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) })
     }
 
     let foreground = unsafe { GetForegroundWindow() };
     if foreground.is_null() {
         return AnchorSnapshot {
-            x: 720,
-            y: 24,
-            mode: "monitor-center",
+            x: 0,
+            y: 0,
+            mode: "none",
             foreground_hwnd: 0,
             focused_hwnd: 0,
-            monitor_lookup_point: (720, 24),
-            monitor_work_area: None,
         };
     }
 
@@ -641,10 +595,6 @@ fn capture_anchor_from_foreground_window() -> AnchorSnapshot {
 
                 let anchor_x = (top_left.x + bottom_right.x) / 2;
                 let anchor_y = top_left.y;
-                let monitor_work_area = monitor_work_area_from_point(POINT {
-                    x: anchor_x,
-                    y: anchor_y,
-                });
 
                 return AnchorSnapshot {
                     x: anchor_x,
@@ -656,8 +606,6 @@ fn capture_anchor_from_foreground_window() -> AnchorSnapshot {
                     } else {
                         gui_info.hwndCaret as isize
                     },
-                    monitor_lookup_point: (anchor_x, anchor_y),
-                    monitor_work_area,
                 };
             }
 
@@ -670,8 +618,6 @@ fn capture_anchor_from_foreground_window() -> AnchorSnapshot {
                 };
                 if unsafe { GetWindowRect(gui_info.hwndFocus, &mut focus_rect) } != 0 {
                     let (x, y) = unsafe { rect_center_top(focus_rect) };
-                    let monitor_work_area = monitor_work_area_from_window(gui_info.hwndFocus)
-                        .or_else(|| monitor_work_area_from_window(foreground));
 
                     return AnchorSnapshot {
                         x,
@@ -679,10 +625,6 @@ fn capture_anchor_from_foreground_window() -> AnchorSnapshot {
                         mode: "focus",
                         foreground_hwnd: foreground as isize,
                         focused_hwnd: gui_info.hwndFocus as isize,
-                        monitor_lookup_point: monitor_work_area
-                            .map(work_area_lookup_point)
-                            .unwrap_or((x, y)),
-                        monitor_work_area,
                     };
                 }
             }
@@ -697,7 +639,6 @@ fn capture_anchor_from_foreground_window() -> AnchorSnapshot {
     };
     if unsafe { GetWindowRect(foreground, &mut window_rect) } != 0 {
         let (x, y) = unsafe { rect_center_top(window_rect) };
-        let monitor_work_area = monitor_work_area_from_window(foreground);
 
         return AnchorSnapshot {
             x,
@@ -705,23 +646,16 @@ fn capture_anchor_from_foreground_window() -> AnchorSnapshot {
             mode: "window",
             foreground_hwnd: foreground as isize,
             focused_hwnd: focused_hwnd as isize,
-            monitor_lookup_point: monitor_work_area
-                .map(work_area_lookup_point)
-                .unwrap_or((x, y)),
-            monitor_work_area,
         };
     }
 
-    let monitor_work_area = monitor_work_area_from_window(foreground);
+    // Last resort: use cursor position
+    let cursor = get_cursor_pos();
     AnchorSnapshot {
-        x: 720,
-        y: 24,
-        mode: "monitor-center",
+        x: cursor.0,
+        y: cursor.1,
+        mode: "cursor",
         foreground_hwnd: foreground as isize,
         focused_hwnd: focused_hwnd as isize,
-        monitor_lookup_point: monitor_work_area
-            .map(work_area_lookup_point)
-            .unwrap_or((720, 24)),
-        monitor_work_area,
     }
 }

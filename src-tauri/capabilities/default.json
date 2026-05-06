@@ -5,7 +5,24 @@
   "windows": ["main", "overlay", "rewriter"],
   "permissions": [
     "core:default",
+    "core:window:default",
+    "core:window:allow-create",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:window:allow-set-position",
+    "core:window:allow-set-size",
+    "core:window:allow-set-always-on-top",
+    "core:window:allow-set-ignore-cursor-events",
+    "core:window:allow-destroy",
+    "core:webview:default",
+    "core:event:default",
+    "core:menu:default",
+    "core:tray:default",
     "opener:default",
-    "autostart:default"
+    "autostart:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-is-registered"
   ]
 }
