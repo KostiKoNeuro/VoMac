@@ -52,6 +52,7 @@ export function DictationOverlayWindow() {
     overlayState,
     timerLabel,
     successLabel,
+    liveText,
     errorTitle,
     errorText,
     startRecording,
@@ -149,6 +150,7 @@ export function DictationOverlayWindow() {
         state={overlayState}
         interactive
         timerLabel={timerLabel}
+        liveText={liveText ?? undefined}
         errorTitle={errorTitle}
         errorText={errorText ?? undefined}
         successText={successLabel}

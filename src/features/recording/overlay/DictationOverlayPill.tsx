@@ -32,6 +32,7 @@ export function DictationOverlayPill({
   state,
   interactive = true,
   timerLabel = "00:00",
+  liveText,
   errorTitle,
   errorText,
   successText,
@@ -109,12 +110,18 @@ export function DictationOverlayPill({
                 </span>
               </button>
 
-              {/* Status bar */}
-              <div className="flex h-9 items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3">
+              {/* Status bar with live transcript preview */}
+              <div className="flex h-9 min-w-0 items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3">
                 <AudioDot active />
-                <span className="font-mono text-[11px] font-medium tracking-[0.05em] text-[var(--color-text-muted)]">
-                  {timerLabel}
-                </span>
+                {liveText ? (
+                  <span className="min-w-0 flex-1 truncate text-xs text-[var(--color-text-primary)]">
+                    {liveText}
+                  </span>
+                ) : (
+                  <span className="font-mono text-[11px] font-medium tracking-[0.05em] text-[var(--color-text-muted)]">
+                    {timerLabel}
+                  </span>
+                )}
               </div>
 
               {interactive && (

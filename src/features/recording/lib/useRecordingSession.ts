@@ -12,6 +12,11 @@ import { logRuntimeDiagnostic } from "../../../lib/tauri/diagnostics";
 import type { OverlayPillState } from "../overlay/types";
 import { assessTranscriptionQuality } from "./qualityGate";
 import { SessionFlightController } from "./sessionFlight";
+import {
+  DeepgramStreamHandle,
+  openDeepgramStream,
+} from "./deepgramStreamingClient";
+import { attachPcmStreamPump } from "./pcmStreamPump";
 import { convertToWav } from "../../../lib/audioUtils";
 
 const BAR_COUNT = 10;
@@ -43,6 +48,7 @@ interface RecordingSessionState {
   levels: number[];
   timerLabel: string;
   successLabel: string;
+  liveText: string | null;
   errorTitle: string;
   errorText: string | null;
   insertionNotice: string | null;
@@ -121,6 +127,7 @@ export function useRecordingSession({
   const [lastRecording, setLastRecording] = useState<RecordingArtifact | null>(null);
   const [lastTranscription, setLastTranscription] =
     useState<TranscriptionResult | null>(null);
+  const [liveText, setLiveText] = useState<string | null>(null);
 
   const overlayStateRef = useRef<OverlayPillState>("idle");
   const lastRecordingRef = useRef<RecordingArtifact | null>(null);
@@ -138,6 +145,8 @@ export function useRecordingSession({
   const activeSessionIdRef = useRef<number | null>(null);
   const isStartingRef = useRef(false);
   const flightControllerRef = useRef(new SessionFlightController());
+  const streamClientRef = useRef<DeepgramStreamHandle | null>(null);
+  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
 
   const setOverlayStateValue = useCallback((nextState: OverlayPillState) => {
     overlayStateRef.current = nextState;
@@ -157,6 +166,9 @@ export function useRecordingSession({
   }, []);
 
   const teardownAudioNodes = useCallback(async () => {
+    workletNodeRef.current?.disconnect();
+    workletNodeRef.current = null;
+
     sourceRef.current?.disconnect();
     sourceRef.current = null;
 
@@ -205,6 +217,8 @@ export function useRecordingSession({
   }, []);
 
   const cleanupActiveSession = useCallback(async () => {
+    streamClientRef.current?.abort();
+    streamClientRef.current = null;
     stopMonitoring();
     stopTracks();
     await teardownAudioNodes();
@@ -213,6 +227,7 @@ export function useRecordingSession({
   const resetOverlayVisuals = useCallback(() => {
     setLevels(createIdleLevels());
     setTimerMs(0);
+    setLiveText(null);
   }, []);
 
   const invalidateCurrentSession = useCallback(() => {
@@ -345,6 +360,51 @@ export function useRecordingSession({
     resetOverlayVisuals,
   ]);
 
+  const attachDeepgramStreaming = useCallback(
+    async (
+      sessionId: number,
+      audioContext: AudioContext,
+      source: MediaStreamAudioSourceNode,
+    ) => {
+      try {
+        const client = openDeepgramStream({
+          apiKey: transcriptionSettings.apiKey,
+          model: transcriptionSettings.model,
+          languageHint: transcriptionSettings.languageHint,
+        });
+        streamClientRef.current = client;
+
+        client.onTranscript((text) => {
+          if (flightControllerRef.current.isCurrent(sessionId)) {
+            setLiveText(text);
+          }
+        });
+
+        const worklet = await attachPcmStreamPump(audioContext, source, (chunk) => {
+          const samples = new Int16Array(chunk.length);
+          for (let index = 0; index < chunk.length; index += 1) {
+            const sample = Math.max(-1, Math.min(1, chunk[index]));
+            samples[index] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+          }
+          client.sendAudio(samples);
+        });
+        workletNodeRef.current = worklet;
+        void logRuntimeDiagnostic("recording", "deepgram-stream-attached", {
+          sessionId,
+        });
+      } catch (error) {
+        // Streaming is best-effort: the recorded blob still goes through the
+        // regular file-based flow when the stream cannot be attached.
+        streamClientRef.current = null;
+        void logRuntimeDiagnostic("recording", "deepgram-stream-failed", {
+          sessionId,
+          message: normalizeMicError(error),
+        });
+      }
+    },
+    [transcriptionSettings],
+  );
+
   const startRecording = useCallback(async () => {
     if (
       isStartingRef.current ||
@@ -381,7 +441,9 @@ export function useRecordingSession({
       streamRef.current = stream;
       const streamReadyAt = Date.now();
 
-      const audioContext = new window.AudioContext();
+      // 16 kHz matches the streaming wire format (Deepgram linear16) so the
+      // worklet pump can send raw mic samples without resampling.
+      const audioContext = new window.AudioContext({ sampleRate: 16000 });
       audioContextRef.current = audioContext;
 
       const source = audioContext.createMediaStreamSource(stream);
@@ -393,6 +455,10 @@ export function useRecordingSession({
       analyserRef.current = analyser;
 
       source.connect(analyser);
+
+      if (transcriptionSettings.provider === "deepgram") {
+        void attachDeepgramStreaming(sessionId, audioContext, source);
+      }
 
       const recorder = new MediaRecorder(stream);
       recorderRef.current = recorder;
@@ -429,7 +495,14 @@ export function useRecordingSession({
       });
       await showErrorState(sessionId, "overlay.error.microphoneTitle", normalizeMicError(error));
     }
-  }, [prepareForNextSession, setOverlayStateValue, showErrorState, startMonitoring]);
+  }, [
+    attachDeepgramStreaming,
+    prepareForNextSession,
+    setOverlayStateValue,
+    showErrorState,
+    startMonitoring,
+    transcriptionSettings,
+  ]);
 
   const stopRecording = useCallback(async () => {
     const sessionId = activeSessionIdRef.current;
@@ -440,6 +513,10 @@ export function useRecordingSession({
     if (!flightControllerRef.current.beginProcessing(sessionId)) {
       return;
     }
+
+    // Detach the stream client before any cleanup path can abort it.
+    const streamClient = streamClientRef.current;
+    streamClientRef.current = null;
 
     resetOverlayTimeout();
     stopMonitoring();
@@ -475,12 +552,6 @@ export function useRecordingSession({
         recorder.addEventListener("error", handleError, { once: true });
         recorder.stop();
       });
-
-      try {
-        blob = await convertToWav(blob);
-      } catch (error) {
-        console.error("Failed to convert webm to wav:", error);
-      }
 
       recorderRef.current = null;
       const stoppedAt = Date.now();
@@ -542,11 +613,54 @@ export function useRecordingSession({
       const abortController = new AbortController();
       requestAbortControllerRef.current = abortController;
 
-      const transcription = await transcribeAudio({
-        audioFile: nextRecording.file,
-        settings: effectiveTranscriptionSettings,
-        signal: abortController.signal,
-      });
+      // Prefer live-streamed finals; the recorded blob stays as a fallback so
+      // a failed or empty stream degrades to the regular REST flow instead of
+      // losing the dictation.
+      let transcription: TranscriptionResult | null = null;
+      if (streamClient && streamClient.isUsable()) {
+        const streamedText = await streamClient.finish();
+        if (streamedText) {
+          void logRuntimeDiagnostic("recording", "stream-finalized", {
+            sessionId,
+            chars: streamedText.length,
+          });
+          transcription = {
+            text: streamedText,
+            model: effectiveTranscriptionSettings.model,
+            provider: "deepgram",
+            createdAt: Date.now(),
+          };
+        }
+      } else {
+        streamClient?.abort();
+      }
+
+      if (!transcription) {
+        try {
+          blob = await convertToWav(blob);
+        } catch (error) {
+          console.error("Failed to convert webm to wav:", error);
+        }
+
+        const fallbackMimeType = blob.type || "audio/wav";
+        const fallbackFile = new File(
+          [blob],
+          `vo-recording-${new Date().toISOString().replace(/[:.]/g, "-")}.${
+            fallbackMimeType.includes("wav")
+              ? "wav"
+              : fallbackMimeType.includes("ogg")
+                ? "ogg"
+                : "webm"
+          }`,
+          { type: fallbackMimeType },
+        );
+
+        transcription = await transcribeAudio({
+          audioFile: fallbackFile,
+          settings: effectiveTranscriptionSettings,
+          signal: abortController.signal,
+        });
+      }
 
       requestAbortControllerRef.current = null;
       flightControllerRef.current.endProcessing(sessionId);
@@ -672,6 +786,7 @@ export function useRecordingSession({
     levels,
     timerLabel,
     successLabel,
+    liveText,
     errorTitle,
     errorText,
     insertionNotice,

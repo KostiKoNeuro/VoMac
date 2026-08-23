@@ -9,6 +9,8 @@ export interface DictationOverlayPillProps {
   state: OverlayPillState;
   interactive?: boolean;
   timerLabel?: string;
+  /** Live streaming transcript shown while listening (optional). */
+  liveText?: string;
   errorTitle?: string;
   errorText?: string;
   successText?: string;
