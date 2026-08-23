@@ -107,7 +107,9 @@ export async function transcribeWithDeepgram({
       responseBody?.err_msg?.trim() ||
       rawText.trim().slice(0, 300) ||
       translate("transcription.error.requestFailed");
-    throw new Error(`Ошибка ${response.status}: ${serverMessage}`);
+    throw new Error(
+      `${translate("transcription.error.serverError")} ${response.status}: ${serverMessage}`,
+    );
   }
 
   const text =

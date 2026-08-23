@@ -111,8 +111,9 @@ export async function transcribeWithOpenAi({
     const serverMessage =
       responseBody?.error?.message?.trim() || translate("transcription.error.requestFailed");
     console.error("Transcription failed. Status", response.status, "Message:", serverMessage);
-    // return server message directly for debugging, bypassing general maps
-    throw new Error(`Ошибка ${response.status}: ${serverMessage}`);
+    throw new Error(
+      `${translate("transcription.error.serverError")} ${response.status}: ${serverMessage}`,
+    );
   }
 
   const text = responseBody?.text?.trim();

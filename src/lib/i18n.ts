@@ -61,6 +61,7 @@ const en = {
   "general.liveInsert.label": "Live typing (streaming)",
   "general.liveInsert.desc": "With a streaming provider (Deepgram), type finalized text straight into the focused field while you speak — like built-in voice typing. Clipboard stays untouched.",
   "general.liveInsert.aria": "Enable live typing",
+  "transcription.error.serverError": "Server error",
 
   "recording.title": "Recording",
   "recording.desc": "Input behavior and MVP recording controls for Windows.",
@@ -306,6 +307,7 @@ const ru: TranslationDictionary = {
   "general.liveInsert.label": "Живая печать (стриминг)",
   "general.liveInsert.desc": "Со стриминговым провайдером (Deepgram) распознанный текст печатается прямо в поле ввода во время речи — как во встроенной диктовке Windows. Буфер обмена не затрагивается.",
   "general.liveInsert.aria": "Включить живую печать",
+  "transcription.error.serverError": "Ошибка сервера",
 
   "recording.title": "Запись",
   "recording.desc": "Поведение ввода и базовые настройки записи для Windows.",
