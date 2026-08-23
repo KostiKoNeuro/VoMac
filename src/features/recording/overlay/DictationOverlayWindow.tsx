@@ -146,7 +146,7 @@ export function DictationOverlayWindow() {
   }, [overlayWindow]);
 
   return (
-    <div className="grid h-screen place-items-center bg-transparent px-1 py-1">
+    <div className="flex h-screen items-center justify-center bg-transparent px-1 py-1">
       <DictationOverlayPill
         state={overlayState}
         interactive

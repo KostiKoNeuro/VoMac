@@ -10,6 +10,7 @@ import { IconButton } from "../../../components/ui/IconButton";
 import { cn } from "../../../lib/cn";
 import { useTranslation } from "../../../lib/i18n";
 import type { DictationOverlayPillProps } from "./types";
+import { OverlayStatusLine } from "./OverlayStatusLine";
 import { VoiceOrb } from "./VoiceOrb";
 
 export function DictationOverlayPill({
@@ -37,7 +38,7 @@ export function DictationOverlayPill({
       layout
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
       className={cn(
-        "relative mx-auto w-max shrink-0 overflow-hidden rounded-[28px] border border-white/10 bg-[rgba(10,14,24,0.86)] shadow-[0_18px_50px_-12px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.04)_inset] backdrop-blur-[14px]",
+        "relative mx-auto w-max max-w-full shrink-0 overflow-hidden rounded-[28px] border border-white/10 bg-[rgba(10,14,24,0.86)] shadow-[0_18px_50px_-12px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.04)_inset] backdrop-blur-[14px]",
         state === "listening" && "border-indigo-200/30",
         state === "idle" && "border-white/10",
         state === "processing" && "border-violet-200/25",
@@ -81,20 +82,7 @@ export function DictationOverlayPill({
               />
 
               {/* Status bar: timer + live transcript preview */}
-              <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-xl bg-white/[0.04] px-3">
-                <span className="shrink-0 font-mono text-[11px] font-medium tracking-[0.05em] text-[var(--color-text-muted)]">
-                  {timerLabel}
-                </span>
-                {liveText ? (
-                  <span className="min-w-0 flex-1 truncate text-xs text-[var(--color-text-primary)]">
-                    {liveText}
-                  </span>
-                ) : (
-                  <span className="min-w-0 flex-1 truncate text-xs text-[var(--color-text-subtle)]">
-                    {t("overlay.listening")}
-                  </span>
-                )}
-              </div>
+              <OverlayStatusLine timerLabel={timerLabel} liveText={liveText} />
 
               {interactive && (
                 <IconButton
