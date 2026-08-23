@@ -37,8 +37,8 @@ export function DictationOverlayPill({
       layout
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
       className={cn(
-        "relative mx-auto shrink-0 overflow-hidden rounded-[28px] border border-white/10 bg-[rgba(10,14,24,0.86)] shadow-[0_18px_50px_-12px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.04)_inset] backdrop-blur-[14px]",
-        state === "listening" && "border-indigo-200/30 w-[340px]",
+        "relative mx-auto w-max shrink-0 overflow-hidden rounded-[28px] border border-white/10 bg-[rgba(10,14,24,0.86)] shadow-[0_18px_50px_-12px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.04)_inset] backdrop-blur-[14px]",
+        state === "listening" && "border-indigo-200/30",
         state === "idle" && "border-white/10",
         state === "processing" && "border-violet-200/25",
         state === "success" && "border-indigo-200/25",
@@ -59,30 +59,29 @@ export function DictationOverlayPill({
         >
           {/* ── IDLE ── */}
           {state === "idle" && (
-            <div className="flex h-16 items-center px-3 py-2">
+            <div className="flex h-11 items-center px-2 py-1.5">
               <VoiceOrb
                 state="idle"
                 volume={volume}
-                size={48}
+                size={36}
                 onClick={interactive ? onStart : undefined}
               />
-              <span className="ml-3 text-xs text-[var(--color-text-muted)]">
-                {t("overlay.actions.start")}
-              </span>
             </div>
           )}
 
           {/* ── LISTENING ── */}
           {state === "listening" && (
-            <div className="flex flex-col items-center gap-2 px-4 pb-3 pt-3">
+            <div className="flex h-11 items-center gap-1.5 px-2 py-1.5">
+              {/* Orb doubles as the stop button */}
               <VoiceOrb
                 state="listening"
                 volume={volume}
-                size={72}
+                size={36}
                 onClick={onStop}
               />
 
-              <div className="flex h-9 w-full min-w-0 items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3">
+              {/* Status bar: timer + live transcript preview */}
+              <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3">
                 <span className="shrink-0 font-mono text-[11px] font-medium tracking-[0.05em] text-[var(--color-text-muted)]">
                   {timerLabel}
                 </span>
@@ -95,15 +94,16 @@ export function DictationOverlayPill({
                     {t("overlay.listening")}
                   </span>
                 )}
-                {interactive && (
-                  <IconButton
-                    icon={<X className="h-3.5 w-3.5" />}
-                    label={t("overlay.actions.abort")}
-                    onClick={onAbort}
-                    className="h-7 w-7 shrink-0 rounded-lg"
-                  />
-                )}
               </div>
+
+              {interactive && (
+                <IconButton
+                  icon={<X className="h-3.5 w-3.5" />}
+                  label={t("overlay.actions.abort")}
+                  onClick={onAbort}
+                  className="h-9 w-9 shrink-0 rounded-xl"
+                />
+              )}
             </div>
           )}
 

@@ -106,8 +106,8 @@ export function VoiceOrb({
       {/* Outer halo */}
       <motion.div
         aria-hidden
-        className="absolute -inset-3 rounded-full blur-lg"
-        style={{ background: palette.halo, scale: haloScale }}
+        className="absolute rounded-full blur-lg"
+        style={{ inset: "-24%", background: palette.halo, scale: haloScale }}
         animate={haloBreath(state)}
         transition={{ duration: state === "idle" ? 3.4 : 1.6, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
       />
@@ -119,9 +119,9 @@ export function VoiceOrb({
         style={{
           background: `conic-gradient(from 0deg, transparent 0%, ${palette.ring} 18%, transparent 42%, transparent 55%, ${palette.ring} 72%, transparent 95%)`,
           WebkitMaskImage:
-            "radial-gradient(farthest-side, transparent calc(100% - 5px), black calc(100% - 4px))",
+            "radial-gradient(farthest-side, transparent calc(100% - 4px), black calc(100% - 3px))",
           maskImage:
-            "radial-gradient(farthest-side, transparent calc(100% - 5px), black calc(100% - 4px))",
+            "radial-gradient(farthest-side, transparent calc(100% - 4px), black calc(100% - 3px))",
           opacity: palette.ringOpacity,
           scale: ringScale,
         }}
