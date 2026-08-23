@@ -420,16 +420,18 @@ export function RewriterSection() {
             label={t("rewriter.hotkey.label" as any)}
             description={t("rewriter.hotkey.desc" as any)}
             control={
-              <div className="flex items-center gap-2">
+              <div className="flex items-start gap-2">
                 <Input
                   label={t("rewriter.hotkey.inputLabel" as any)}
                   value={hotkey}
                   onChange={(e) => setHotkey(e.target.value)}
+                  className="min-w-0 flex-1"
                 />
                 <Button
                   variant="ghost"
                   onClick={() => void handleApplyHotkey()}
                   disabled={hotkeyApplying}
+                  className="shrink-0 self-end whitespace-nowrap"
                 >
                   {t("rewriter.hotkey.apply" as any)}
                 </Button>
@@ -479,17 +481,19 @@ export function RewriterSection() {
             description={t("rewriter.model.desc" as any)}
             control={
               <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-start gap-2">
                   <Input
                     label={t("rewriter.model.inputLabel" as any)}
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
                     placeholder="gpt-4o"
+                    className="min-w-0 flex-1"
                   />
                   <Button
                     variant="ghost"
                     onClick={() => void handleLoadModels()}
                     disabled={modelsLoading}
+                    className="shrink-0 self-end whitespace-nowrap"
                   >
                     {modelsLoading ? t("rewriter.models.loading" as any) : t("rewriter.models.load" as any)}
                   </Button>

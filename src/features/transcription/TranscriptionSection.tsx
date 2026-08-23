@@ -218,18 +218,20 @@ export function TranscriptionSection() {
             description={t("transcription.model.desc")}
             control={
               <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-start gap-2">
                   <Input
                     label={t("transcription.model.inputLabel")}
                     value={modelName}
                     onChange={(event) => setModelName(event.target.value)}
                     placeholder={preset.defaultSttModel || "model-name"}
+                    className="min-w-0 flex-1"
                   />
                   {provider !== "deepgram" && (
                     <Button
                       variant="ghost"
                       onClick={() => void handleLoadModels()}
                       disabled={modelsLoading}
+                      className="shrink-0 self-end whitespace-nowrap"
                     >
                       {modelsLoading
                         ? t("transcription.models.loading" as any)
