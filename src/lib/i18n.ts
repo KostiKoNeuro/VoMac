@@ -157,6 +157,7 @@ const en = {
   "history.deleteAria": "Delete transcription",
 
   "overlay.processing": "Transcribing",
+  "overlay.listening": "Listening…",
   "overlay.actions.start": "Start recording",
   "overlay.actions.stop": "Stop recording",
   "overlay.actions.abort": "Abort dictation",
@@ -398,6 +399,7 @@ const ru: TranslationDictionary = {
   "history.deleteAria": "Удалить транскрипцию",
 
   "overlay.processing": "Транскрибация",
+  "overlay.listening": "Слушаю…",
   "overlay.actions.start": "Начать запись",
   "overlay.actions.stop": "Остановить запись",
   "overlay.actions.abort": "Прервать диктовку",

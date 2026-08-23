@@ -1,5 +1,6 @@
 import { useEffect, useRef, useMemo, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { LogicalSize, PhysicalPosition } from "@tauri-apps/api/dpi";
 import { useTranscriptionSettings } from "../../transcription/context/TranscriptionSettingsContext";
 import {
   loadSharedTranscriptionSettings,
@@ -30,6 +31,36 @@ interface DictationTriggeredPayload {
   };
 }
 
+// The pill expands while listening (orb + live transcript) and collapses back
+// otherwise. Sizes are logical pixels.
+const COMPACT_SIZE = { width: 304, height: 92 };
+const EXPANDED_SIZE = { width: 340, height: 150 };
+
+/**
+ * Resizes the overlay window while keeping its bottom edge anchored: growth
+ * extends upward, so the pill never sinks below its original bottom line.
+ */
+async function resizeKeepingBottomAnchor(
+  window: ReturnType<typeof getCurrentWindow>,
+  width: number,
+  height: number,
+): Promise<void> {
+  try {
+    const position = await window.outerPosition();
+    const scaleFactor = await window.scaleFactor();
+    const currentSize = await window.outerSize();
+    const targetHeight = Math.round(height * scaleFactor);
+    const bottomY = position.y + currentSize.height;
+
+    await window.setSize(new LogicalSize(width, height));
+    await window.setPosition(
+      new PhysicalPosition(position.x, bottomY - targetHeight),
+    );
+  } catch {
+    // Best-effort: if window APIs are unavailable, keep the current geometry.
+  }
+}
+
 export function DictationOverlayWindow() {
   const overlayWindow = useMemo(() => getCurrentWindow(), []);
   const { settings } = useTranscriptionSettings();
@@ -53,6 +84,7 @@ export function DictationOverlayWindow() {
     timerLabel,
     successLabel,
     liveText,
+    volumeLevel,
     errorTitle,
     errorText,
     startRecording,
@@ -97,6 +129,12 @@ export function DictationOverlayWindow() {
       void invoke("cancel_overlay_hide");
     });
     void overlayWindow.show();
+  }, [overlayState, overlayWindow]);
+
+  // Expand while listening (orb layout), collapse back otherwise.
+  useEffect(() => {
+    const size = overlayState === "listening" ? EXPANDED_SIZE : COMPACT_SIZE;
+    void resizeKeepingBottomAnchor(overlayWindow, size.width, size.height);
   }, [overlayState, overlayWindow]);
 
   useEffect(() => {
@@ -151,6 +189,7 @@ export function DictationOverlayWindow() {
         interactive
         timerLabel={timerLabel}
         liveText={liveText ?? undefined}
+        volume={volumeLevel}
         errorTitle={errorTitle}
         errorText={errorText ?? undefined}
         successText={successLabel}

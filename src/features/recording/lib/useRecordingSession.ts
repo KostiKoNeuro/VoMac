@@ -49,6 +49,7 @@ interface RecordingSessionState {
   timerLabel: string;
   successLabel: string;
   liveText: string | null;
+  volumeLevel: number;
   errorTitle: string;
   errorText: string | null;
   insertionNotice: string | null;
@@ -128,6 +129,7 @@ export function useRecordingSession({
   const [lastTranscription, setLastTranscription] =
     useState<TranscriptionResult | null>(null);
   const [liveText, setLiveText] = useState<string | null>(null);
+  const [volumeLevel, setVolumeLevel] = useState(0);
 
   const overlayStateRef = useRef<OverlayPillState>("idle");
   const lastRecordingRef = useRef<RecordingArtifact | null>(null);
@@ -228,6 +230,7 @@ export function useRecordingSession({
     setLevels(createIdleLevels());
     setTimerMs(0);
     setLiveText(null);
+    setVolumeLevel(0);
   }, []);
 
   const invalidateCurrentSession = useCallback(() => {
@@ -311,6 +314,7 @@ export function useRecordingSession({
       const rms = Math.sqrt(squareSum / buffer.length);
       const scaledVolume = Math.min(1, rms * 3.3);
       setLevels(createLevelBars(scaledVolume));
+      setVolumeLevel(scaledVolume);
 
       rafIdRef.current = window.requestAnimationFrame(update);
     };
@@ -787,6 +791,7 @@ export function useRecordingSession({
     timerLabel,
     successLabel,
     liveText,
+    volumeLevel,
     errorTitle,
     errorText,
     insertionNotice,

@@ -11,6 +11,8 @@ export interface DictationOverlayPillProps {
   timerLabel?: string;
   /** Live streaming transcript shown while listening (optional). */
   liveText?: string;
+  /** Continuous mic loudness 0..1 driving the orb animation. */
+  volume?: number;
   errorTitle?: string;
   errorText?: string;
   successText?: string;
