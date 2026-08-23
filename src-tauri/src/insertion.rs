@@ -7,7 +7,10 @@ use crate::dictation::{
     DictationRuntimeStore,
 };
 
-const POST_PASTE_CLIPBOARD_SETTLE_MS: u64 = 250;
+// Give the target app time to read the pasted clipboard content before the
+// user's previous clipboard is restored; slow readers need more than a
+// moment, but waiting too long risks clobbering a fresh user copy.
+const POST_PASTE_CLIPBOARD_SETTLE_MS: u64 = 1500;
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
