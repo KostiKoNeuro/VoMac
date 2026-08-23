@@ -63,12 +63,12 @@ body {
   background:
     radial-gradient(
       70% 60% at 9% -10%,
-      rgba(59, 178, 159, 0.26) 0%,
+      rgba(99, 102, 241, 0.16) 0%,
       transparent 62%
     ),
     radial-gradient(
       60% 60% at 100% 0%,
-      rgba(34, 93, 136, 0.22) 0%,
+      rgba(139, 92, 246, 0.13) 0%,
       transparent 58%
     ),
     var(--color-bg-canvas);
@@ -86,7 +86,7 @@ body[data-window="rewriter"] #root {
 }
 
 ::selection {
-  background: rgba(98, 220, 192, 0.32);
+  background: rgba(129, 140, 248, 0.32);
   color: #f5fbff;
 }
 
