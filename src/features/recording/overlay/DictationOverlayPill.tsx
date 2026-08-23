@@ -81,7 +81,7 @@ export function DictationOverlayPill({
               />
 
               {/* Status bar: timer + live transcript preview */}
-              <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3">
+              <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-xl bg-white/[0.04] px-3">
                 <span className="shrink-0 font-mono text-[11px] font-medium tracking-[0.05em] text-[var(--color-text-muted)]">
                   {timerLabel}
                 </span>
