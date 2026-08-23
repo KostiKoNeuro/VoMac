@@ -5,7 +5,6 @@ import { Button } from "../../components/ui/Button";
 import { HotkeyInput } from "../../components/ui/HotkeyInput";
 import { Notice } from "../../components/ui/Notice";
 import { PillBadge } from "../../components/ui/PillBadge";
-import { Toggle } from "../../components/ui/Toggle";
 import { translate, useTranslation } from "../../lib/i18n";
 import { getHotkeyStatus, setDictationHotkey } from "../../lib/tauri/hotkey";
 import type { HotkeyStatus } from "../../types/hotkey";
@@ -34,9 +33,6 @@ export function RecordingSection() {
   const [pushToTalk, setPushToTalk] = useState("Ctrl+Shift+Space");
   const [hotkeyStatus, setHotkeyStatus] = useState<HotkeyStatus | null>(null);
   const [isSavingHotkey, setIsSavingHotkey] = useState(false);
-  const [smartGain, setSmartGain] = useState(true);
-  const [noiseSuppression, setNoiseSuppression] = useState(true);
-  const [autoStopSilence, setAutoStopSilence] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -123,39 +119,6 @@ export function RecordingSection() {
                   </Notice>
                 ) : null}
               </div>
-            }
-          />
-          <SettingsRow
-            label={t("recording.smartGain.label")}
-            description={t("recording.smartGain.desc")}
-            control={
-              <Toggle
-                checked={smartGain}
-                onCheckedChange={setSmartGain}
-                ariaLabel={t("recording.smartGain.aria")}
-              />
-            }
-          />
-          <SettingsRow
-            label={t("recording.noiseSuppression.label")}
-            description={t("recording.noiseSuppression.desc")}
-            control={
-              <Toggle
-                checked={noiseSuppression}
-                onCheckedChange={setNoiseSuppression}
-                ariaLabel={t("recording.noiseSuppression.aria")}
-              />
-            }
-          />
-          <SettingsRow
-            label={t("recording.autoStop.label")}
-            description={t("recording.autoStop.desc")}
-            control={
-              <Toggle
-                checked={autoStopSilence}
-                onCheckedChange={setAutoStopSilence}
-                ariaLabel={t("recording.autoStop.aria")}
-              />
             }
           />
         </div>
