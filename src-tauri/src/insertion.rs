@@ -55,8 +55,189 @@ pub fn insert_text_mvp(state: State<'_, DictationRuntimeStore>, text: String) ->
     }
 }
 
-pub(crate) fn paste_text_to_target(target: CapturedTarget, text: String) -> InsertionResult {
-    if text.trim().is_empty() {
+/// Types text directly into whatever input currently has keyboard focus using
+/// synthetic Unicode keystrokes (the mechanism Windows' own voice typing uses).
+/// Does not touch the clipboard and does not move window focus.
+#[tauri::command]
+pub fn insert_text_live(text: String) -> InsertionResult {
+    #[cfg(target_os = "windows")]
+    {
+        match type_text_unicode(&text) {
+            Ok(()) => {
+                log_insertion_event(
+                    "live-typed",
+                    format!("chars={}", text.chars().count()),
+                );
+                InsertionResult {
+                    inserted: true,
+                    method: "unicode_typing".to_string(),
+                    error: None,
+                }
+            }
+            Err(error) => {
+                log_insertion_event("live-typing-failed", error.clone());
+                InsertionResult {
+                    inserted: false,
+                    method: "unicode_typing".to_string(),
+                    error: Some(error),
+                }
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = text;
+        InsertionResult {
+            inserted: false,
+            method: "unicode_typing".to_string(),
+            error: Some("Live typing is currently implemented for Windows only.".to_string()),
+        }
+    }
+}
+
+/// Removes up to `count` characters before the caret with synthetic backspaces.
+/// Used to undo live-typed text when the quality gate rejects a dictation.
+#[tauri::command]
+pub fn delete_last_chars(count: u32) -> InsertionResult {
+    #[cfg(target_os = "windows")]
+    {
+        let capped = count.min(2000);
+        match send_backspaces(capped) {
+            Ok(()) => InsertionResult {
+                inserted: true,
+                method: "backspace".to_string(),
+                error: None,
+            },
+            Err(error) => InsertionResult {
+                inserted: false,
+                method: "backspace".to_string(),
+                error: Some(error),
+            },
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = count;
+        InsertionResult {
+            inserted: false,
+            method: "backspace".to_string(),
+            error: Some("Backspacing is currently implemented for Windows only.".to_string()),
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn type_text_unicode(text: &str) -> Result<(), String> {
+    use std::mem::size_of;
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, KEYEVENTF_UNICODE,
+    };
+
+    // Newlines rarely survive synthetic typing outside multiline fields; flatten
+    // them so streaming chunks behave like continuous speech.
+    let normalized: String = text
+        .chars()
+        .map(|ch| if ch == '\n' || ch == '\r' { ' ' } else { ch })
+        .collect();
+
+    // Send UTF-16 units (covers surrogate pairs) in modest batches: some apps
+    // drop very large single SendInput arrays.
+    let units: Vec<u16> = normalized
+        .encode_utf16()
+        .filter(|&unit| unit != 0)
+        .collect();
+
+    for batch in units.chunks(64) {
+        let mut inputs: Vec<INPUT> = Vec::with_capacity(batch.len() * 2);
+        for &unit in batch {
+            inputs.push(INPUT {
+                r#type: INPUT_KEYBOARD,
+                Anonymous: INPUT_0 {
+                    ki: KEYBDINPUT {
+                        wVk: 0,
+                        wScan: unit,
+                        dwFlags: KEYEVENTF_UNICODE,
+                        time: 0,
+                        dwExtraInfo: 0,
+                    },
+                },
+            });
+            inputs.push(INPUT {
+                r#type: INPUT_KEYBOARD,
+                Anonymous: INPUT_0 {
+                    ki: KEYBDINPUT {
+                        wVk: 0,
+                        wScan: unit,
+                        dwFlags: KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
+                        time: 0,
+                        dwExtraInfo: 0,
+                    },
+                },
+            });
+        }
+
+        let sent =
+            unsafe { SendInput(inputs.len() as u32, inputs.as_ptr(), size_of::<INPUT>() as i32) };
+        if sent != inputs.len() as u32 {
+            return Err("Failed to dispatch Unicode keystrokes.".to_string());
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn send_backspaces(count: u32) -> Result<(), String> {
+    use std::mem::size_of;
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP,
+    };
+
+    const VK_BACK: u16 = 0x08;
+
+    if count == 0 {
+        return Ok(());
+    }
+
+    let mut inputs: Vec<INPUT> = Vec::with_capacity((count as usize) * 2);
+    for _ in 0..count {
+        inputs.push(INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: VK_BACK,
+                    wScan: 0,
+                    dwFlags: 0,
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        });
+        inputs.push(INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: VK_BACK,
+                    wScan: 0,
+                    dwFlags: KEYEVENTF_KEYUP,
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        });
+    }
+
+    let sent = unsafe { SendInput(inputs.len() as u32, inputs.as_ptr(), size_of::<INPUT>() as i32) };
+    if sent != inputs.len() as u32 {
+        return Err("Failed to dispatch backspaces.".to_string());
+    }
+
+    Ok(())
+}
+
+pub(crate) fn paste_text_to_target(target: CapturedTarget, text: String) -> InsertionResult {    if text.trim().is_empty() {
         return InsertionResult {
             inserted: false,
             method: "none".to_string(),

@@ -58,6 +58,9 @@ const en = {
   "general.clipboard.label": "Copy transcription to clipboard",
   "general.clipboard.desc": "Always copy the transcribed text to clipboard after dictation, in addition to inserting into the active field.",
   "general.clipboard.aria": "Enable copy transcription to clipboard",
+  "general.liveInsert.label": "Live typing (streaming)",
+  "general.liveInsert.desc": "With a streaming provider (Deepgram), type finalized text straight into the focused field while you speak — like built-in voice typing. Clipboard stays untouched.",
+  "general.liveInsert.aria": "Enable live typing",
 
   "recording.title": "Recording",
   "recording.desc": "Input behavior and MVP recording controls for Windows.",
@@ -300,6 +303,9 @@ const ru: TranslationDictionary = {
   "general.clipboard.label": "Копировать транскрипцию в буфер",
   "general.clipboard.desc": "Всегда копировать транскрибированный текст в буфер обмена после диктовки, помимо вставки в активное поле.",
   "general.clipboard.aria": "Включить копирование транскрипции в буфер",
+  "general.liveInsert.label": "Живая печать (стриминг)",
+  "general.liveInsert.desc": "Со стриминговым провайдером (Deepgram) распознанный текст печатается прямо в поле ввода во время речи — как во встроенной диктовке Windows. Буфер обмена не затрагивается.",
+  "general.liveInsert.aria": "Включить живую печать",
 
   "recording.title": "Запись",
   "recording.desc": "Поведение ввода и базовые настройки записи для Windows.",

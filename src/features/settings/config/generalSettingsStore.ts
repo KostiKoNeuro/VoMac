@@ -8,6 +8,7 @@ export const defaultGeneralSettings: GeneralSettings = {
   showNotifications: true,
   language: "ru",
   alwaysCopyToClipboard: false,
+  liveInsert: false,
 };
 
 export function loadGeneralSettings(): GeneralSettings {
@@ -29,6 +30,7 @@ export function loadGeneralSettings(): GeneralSettings {
       showNotifications: typeof parsed.showNotifications === "boolean" ? parsed.showNotifications : defaultGeneralSettings.showNotifications,
       language: (parsed.language === "en" || parsed.language === "ru") ? parsed.language : defaultGeneralSettings.language,
       alwaysCopyToClipboard: typeof parsed.alwaysCopyToClipboard === "boolean" ? parsed.alwaysCopyToClipboard : defaultGeneralSettings.alwaysCopyToClipboard,
+      liveInsert: typeof parsed.liveInsert === "boolean" ? parsed.liveInsert : defaultGeneralSettings.liveInsert,
     };
   } catch {
     return defaultGeneralSettings;

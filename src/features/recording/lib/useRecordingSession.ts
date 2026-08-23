@@ -41,6 +41,8 @@ interface RecordingSessionOptions {
   transcriptionSettings: TranscriptionSettings;
   getLatestTranscriptionSettings?: () => Promise<TranscriptionSettings>;
   alwaysCopyToClipboard?: boolean;
+  /** Type finalized chunks straight into the focused field while dictating. */
+  liveInsert?: boolean;
 }
 
 interface RecordingSessionState {
@@ -115,6 +117,7 @@ export function useRecordingSession({
   transcriptionSettings,
   getLatestTranscriptionSettings,
   alwaysCopyToClipboard = false,
+  liveInsert = false,
 }: RecordingSessionOptions): RecordingSessionState {
   const { language } = useTranslation();
   const { addHistoryItem, setItemStatus } = useTranscriptionHistory();
@@ -149,6 +152,8 @@ export function useRecordingSession({
   const flightControllerRef = useRef(new SessionFlightController());
   const streamClientRef = useRef<DeepgramStreamHandle | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
+  // Characters already live-typed into the target field during this session.
+  const typedCharsRef = useRef(0);
 
   const setOverlayStateValue = useCallback((nextState: OverlayPillState) => {
     overlayStateRef.current = nextState;
@@ -236,6 +241,7 @@ export function useRecordingSession({
   const invalidateCurrentSession = useCallback(() => {
     activeSessionIdRef.current = null;
     isStartingRef.current = false;
+    typedCharsRef.current = 0;
     flightControllerRef.current.invalidate();
     requestAbortControllerRef.current = null;
   }, []);
@@ -384,6 +390,25 @@ export function useRecordingSession({
           }
         });
 
+        // Live typing: every finalized chunk goes straight into the focused
+        // field via synthetic Unicode keystrokes (clipboard stays untouched).
+        if (liveInsert) {
+          client.onFinalTranscript((chunk) => {
+            if (!flightControllerRef.current.isCurrent(sessionId)) {
+              return;
+            }
+
+            const payload = `${chunk} `;
+            typedCharsRef.current += payload.length;
+            void invoke("insert_text_live", { text: payload }).catch((error) => {
+              void logRuntimeDiagnostic("insertion", "live-typing-error", {
+                sessionId,
+                message: String(error),
+              });
+            });
+          });
+        }
+
         const worklet = await attachPcmStreamPump(audioContext, source, (chunk) => {
           const samples = new Int16Array(chunk.length);
           for (let index = 0; index < chunk.length; index += 1) {
@@ -406,7 +431,7 @@ export function useRecordingSession({
         });
       }
     },
-    [transcriptionSettings],
+    [liveInsert, transcriptionSettings],
   );
 
   const startRecording = useCallback(async () => {
@@ -621,12 +646,15 @@ export function useRecordingSession({
       // a failed or empty stream degrades to the regular REST flow instead of
       // losing the dictation.
       let transcription: TranscriptionResult | null = null;
+      let liveTypedChars = 0;
       if (streamClient && streamClient.isUsable()) {
         const streamedText = await streamClient.finish();
-        if (streamedText) {
+        liveTypedChars = liveInsert ? typedCharsRef.current : 0;
+        if (streamedText || liveTypedChars > 0) {
           void logRuntimeDiagnostic("recording", "stream-finalized", {
             sessionId,
             chars: streamedText.length,
+            liveTypedChars,
           });
           transcription = {
             text: streamedText,
@@ -695,6 +723,10 @@ export function useRecordingSession({
 
       if (!qualityResult.allowed) {
         setItemStatus(historyItem.id, "blocked", qualityResult.reason);
+        if (liveTypedChars > 0) {
+          // Undo the already-typed text so rejected dictations don't linger.
+          void invoke("delete_last_chars", { count: liveTypedChars });
+        }
         await showErrorState(
           sessionId,
           "overlay.error.suspiciousBlockedTitle",
@@ -704,6 +736,13 @@ export function useRecordingSession({
       }
 
       if (!flightControllerRef.current.markInserted(sessionId)) {
+        return;
+      }
+
+      if (liveTypedChars > 0) {
+        // The text was typed into the field while dictating; nothing left to insert.
+        setItemStatus(historyItem.id, "inserted");
+        finalizeSuccessfulSession("inserted");
         return;
       }
 
@@ -752,6 +791,7 @@ export function useRecordingSession({
     cleanupActiveSession,
     finalizeSuccessfulSession,
     getLatestTranscriptionSettings,
+    liveInsert,
     resetOverlayTimeout,
     setItemStatus,
     stopMonitoring,

@@ -108,19 +108,21 @@ export async function loadSharedGeneralSettings(): Promise<GeneralSettings> {
 
   const persistedSettings = await invoke<GeneralSettings>("load_general_settings");
   const localSettings = loadGeneralSettings();
-  const persistedIsDefault = 
+  const persistedIsDefault =
     persistedSettings.profileName === defaultGeneralSettings.profileName &&
     persistedSettings.closeToTray === defaultGeneralSettings.closeToTray &&
     persistedSettings.showNotifications === defaultGeneralSettings.showNotifications &&
     persistedSettings.language === defaultGeneralSettings.language &&
-    persistedSettings.alwaysCopyToClipboard === defaultGeneralSettings.alwaysCopyToClipboard;
+    persistedSettings.alwaysCopyToClipboard === defaultGeneralSettings.alwaysCopyToClipboard &&
+    persistedSettings.liveInsert === defaultGeneralSettings.liveInsert;
 
-  const localIsNotDefault = 
+  const localIsNotDefault =
     localSettings.profileName !== defaultGeneralSettings.profileName ||
     localSettings.closeToTray !== defaultGeneralSettings.closeToTray ||
     localSettings.showNotifications !== defaultGeneralSettings.showNotifications ||
     localSettings.language !== defaultGeneralSettings.language ||
-    localSettings.alwaysCopyToClipboard !== defaultGeneralSettings.alwaysCopyToClipboard;
+    localSettings.alwaysCopyToClipboard !== defaultGeneralSettings.alwaysCopyToClipboard ||
+    localSettings.liveInsert !== defaultGeneralSettings.liveInsert;
 
   if (persistedIsDefault && localIsNotDefault) {
     await invoke("save_general_settings", { settings: localSettings });

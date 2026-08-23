@@ -50,6 +50,7 @@ pub struct GeneralSettings {
     pub show_notifications: bool,
     pub language: String,
     pub always_copy_to_clipboard: bool,
+    pub live_insert: bool,
 }
 
 impl Default for GeneralSettings {
@@ -60,6 +61,7 @@ impl Default for GeneralSettings {
             show_notifications: true,
             language: "ru".to_string(),
             always_copy_to_clipboard: false,
+            live_insert: false,
         }
     }
 }
@@ -215,6 +217,7 @@ fn sanitize_general_settings(settings: GeneralSettings) -> GeneralSettings {
         show_notifications: settings.show_notifications,
         language: sanitize_language(settings.language.trim()),
         always_copy_to_clipboard: settings.always_copy_to_clipboard,
+        live_insert: settings.live_insert,
     }
 }
 

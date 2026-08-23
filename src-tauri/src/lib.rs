@@ -51,6 +51,8 @@ pub fn run() {
             hotkey::get_rewriter_hotkey_status,
             hotkey::set_rewriter_hotkey,
             insertion::insert_text_mvp,
+            insertion::insert_text_live,
+            insertion::delete_last_chars,
             storage::load_general_settings,
             storage::save_general_settings,
             storage::load_transcription_settings,

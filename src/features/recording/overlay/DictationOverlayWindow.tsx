@@ -34,16 +34,21 @@ export function DictationOverlayWindow() {
   const overlayWindow = useMemo(() => getCurrentWindow(), []);
   const { settings } = useTranscriptionSettings();
   const [alwaysCopyToClipboard, setAlwaysCopyToClipboard] = useState(false);
+  const [liveInsert, setLiveInsert] = useState(false);
 
   useEffect(() => {
     let mounted = true;
     void loadSharedGeneralSettings().then((gs) => {
-      if (mounted) setAlwaysCopyToClipboard(gs.alwaysCopyToClipboard);
+      if (!mounted) return;
+      setAlwaysCopyToClipboard(gs.alwaysCopyToClipboard);
+      setLiveInsert(gs.liveInsert);
     });
     void listenForSharedGeneralSettingsSync(async () => {
       if (!mounted) return;
       const gs = await loadSharedGeneralSettings();
-      if (mounted) setAlwaysCopyToClipboard(gs.alwaysCopyToClipboard);
+      if (!mounted) return;
+      setAlwaysCopyToClipboard(gs.alwaysCopyToClipboard);
+      setLiveInsert(gs.liveInsert);
     });
     return () => { mounted = false; };
   }, []);
@@ -64,6 +69,7 @@ export function DictationOverlayWindow() {
     transcriptionSettings: settings,
     getLatestTranscriptionSettings: loadSharedTranscriptionSettings,
     alwaysCopyToClipboard,
+    liveInsert,
   });
 
   const overlayStateRef = useRef(overlayState);

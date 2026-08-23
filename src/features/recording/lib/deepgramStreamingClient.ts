@@ -11,6 +11,8 @@ export interface DeepgramStreamHandle {
   sendAudio(pcm: Int16Array): void;
   /** Live transcript updates: finals joined plus the current interim. */
   onTranscript(callback: (liveText: string) => void): void;
+  /** Fires once per finalized chunk — the moment to type it into the field. */
+  onFinalTranscript(callback: (chunk: string) => void): void;
   /** True while the socket is open and usable for dictation. */
   isUsable(): boolean;
   /** True once at least one final result has arrived. */
@@ -83,6 +85,7 @@ export function openDeepgramStream({
   const finals: string[] = [];
   let latestInterim = "";
   let transcriptCallback: ((liveText: string) => void) | null = null;
+  let finalTranscriptCallback: ((chunk: string) => void) | null = null;
 
   const emitLiveText = () => {
     const joined = [...finals, latestInterim].filter(Boolean).join(" ").trim();
@@ -112,6 +115,7 @@ export function openDeepgramStream({
       if (data.is_final) {
         finals.push(transcript);
         latestInterim = "";
+        finalTranscriptCallback?.(transcript);
       } else {
         latestInterim = transcript;
       }
@@ -133,6 +137,10 @@ export function openDeepgramStream({
 
     onTranscript(callback) {
       transcriptCallback = callback;
+    },
+
+    onFinalTranscript(callback) {
+      finalTranscriptCallback = callback;
     },
 
     isUsable() {

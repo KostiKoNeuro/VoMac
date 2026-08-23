@@ -24,6 +24,7 @@ export function GeneralSection() {
   const [profileName, setProfileName] = useState(defaultGeneralSettings.profileName);
   const [language, setLanguage] = useState(defaultGeneralSettings.language);
   const [alwaysCopyToClipboard, setAlwaysCopyToClipboard] = useState(defaultGeneralSettings.alwaysCopyToClipboard);
+  const [liveInsert, setLiveInsert] = useState(defaultGeneralSettings.liveInsert);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export function GeneralSection() {
       setProfileName(current.profileName);
       setLanguage(current.language);
       setAlwaysCopyToClipboard(current.alwaysCopyToClipboard);
+      setLiveInsert(current.liveInsert);
 
       try {
         const autostartEnabled = await isEnabled();
@@ -94,6 +96,7 @@ export function GeneralSection() {
       profileName,
       language,
       alwaysCopyToClipboard,
+      liveInsert,
     });
     setSaveMessage(translate("general.saved"));
     setTimeout(() => {
@@ -107,6 +110,7 @@ export function GeneralSection() {
     setProfileName(defaultGeneralSettings.profileName);
     setLanguage(defaultGeneralSettings.language);
     setAlwaysCopyToClipboard(defaultGeneralSettings.alwaysCopyToClipboard);
+    setLiveInsert(defaultGeneralSettings.liveInsert);
     setAppLanguage(defaultGeneralSettings.language);
     await saveSharedGeneralSettings(defaultGeneralSettings);
     setSaveMessage(translate("general.reset.msg"));
@@ -200,6 +204,17 @@ export function GeneralSection() {
                 checked={alwaysCopyToClipboard}
                 onCheckedChange={setAlwaysCopyToClipboard}
                 ariaLabel={t("general.clipboard.aria")}
+              />
+            }
+          />
+          <SettingsRow
+            label={t("general.liveInsert.label")}
+            description={t("general.liveInsert.desc")}
+            control={
+              <Toggle
+                checked={liveInsert}
+                onCheckedChange={setLiveInsert}
+                ariaLabel={t("general.liveInsert.aria")}
               />
             }
           />
