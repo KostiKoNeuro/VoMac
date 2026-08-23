@@ -1,3 +1,4 @@
+import { transcribeWithDeepgram } from "./deepgramTranscriptionService";
 import { transcribeWithOpenAi } from "./openaiTranscriptionService";
 import type { TranscribeAudioInput, TranscriptionResult } from "../types";
 
@@ -6,7 +7,18 @@ export async function transcribeAudio({
   settings,
   signal,
 }: TranscribeAudioInput): Promise<TranscriptionResult> {
-  // All providers use OpenAI-compatible API format
+  // Deepgram uses its own REST API shape; all other providers are OpenAI-compatible.
+  if (settings.provider === "deepgram") {
+    return transcribeWithDeepgram({
+      audioFile,
+      apiKey: settings.apiKey,
+      baseUrl: settings.baseUrl,
+      model: settings.model,
+      languageHint: settings.languageHint,
+      signal,
+    });
+  }
+
   return transcribeWithOpenAi({
     audioFile,
     apiKey: settings.apiKey,

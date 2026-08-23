@@ -27,6 +27,15 @@ export const providerPresets: ProviderPreset[] = [
     defaultChatModel: "gpt-4o",
   },
   {
+    label: "Deepgram",
+    value: "deepgram",
+    baseUrl: "https://api.deepgram.com/v1/listen",
+    sttSupported: true,
+    chatSupported: false,
+    defaultSttModel: "nova-3",
+    defaultChatModel: "",
+  },
+  {
     label: "OpenRouter",
     value: "openrouter",
     baseUrl: "https://openrouter.ai/api/v1",

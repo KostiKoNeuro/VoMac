@@ -225,15 +225,17 @@ export function TranscriptionSection() {
                     onChange={(event) => setModelName(event.target.value)}
                     placeholder={preset.defaultSttModel || "model-name"}
                   />
-                  <Button
-                    variant="ghost"
-                    onClick={() => void handleLoadModels()}
-                    disabled={modelsLoading}
-                  >
-                    {modelsLoading
-                      ? t("transcription.models.loading" as any)
-                      : t("transcription.models.load" as any)}
-                  </Button>
+                  {provider !== "deepgram" && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => void handleLoadModels()}
+                      disabled={modelsLoading}
+                    >
+                      {modelsLoading
+                        ? t("transcription.models.loading" as any)
+                        : t("transcription.models.load" as any)}
+                    </Button>
+                  )}
                 </div>
                 {availableModels.length > 0 ? (
                   <div className="mt-1">
