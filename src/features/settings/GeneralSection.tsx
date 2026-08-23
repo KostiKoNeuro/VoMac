@@ -25,6 +25,8 @@ export function GeneralSection() {
   const [language, setLanguage] = useState(defaultGeneralSettings.language);
   const [alwaysCopyToClipboard, setAlwaysCopyToClipboard] = useState(defaultGeneralSettings.alwaysCopyToClipboard);
   const [liveInsert, setLiveInsert] = useState(defaultGeneralSettings.liveInsert);
+  // Round-tripped so a general-settings save never wipes the hotkey stored by Rust.
+  const [dictationHotkey, setDictationHotkey] = useState(defaultGeneralSettings.dictationHotkey);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,6 +42,7 @@ export function GeneralSection() {
       setLanguage(current.language);
       setAlwaysCopyToClipboard(current.alwaysCopyToClipboard);
       setLiveInsert(current.liveInsert);
+      setDictationHotkey(current.dictationHotkey);
 
       try {
         const autostartEnabled = await isEnabled();
@@ -97,6 +100,7 @@ export function GeneralSection() {
       language,
       alwaysCopyToClipboard,
       liveInsert,
+      dictationHotkey,
     });
     setSaveMessage(translate("general.saved"));
     setTimeout(() => {
@@ -111,6 +115,7 @@ export function GeneralSection() {
     setLanguage(defaultGeneralSettings.language);
     setAlwaysCopyToClipboard(defaultGeneralSettings.alwaysCopyToClipboard);
     setLiveInsert(defaultGeneralSettings.liveInsert);
+    setDictationHotkey(defaultGeneralSettings.dictationHotkey);
     setAppLanguage(defaultGeneralSettings.language);
     await saveSharedGeneralSettings(defaultGeneralSettings);
     setSaveMessage(translate("general.reset.msg"));

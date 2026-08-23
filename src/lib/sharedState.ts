@@ -114,7 +114,8 @@ export async function loadSharedGeneralSettings(): Promise<GeneralSettings> {
     persistedSettings.showNotifications === defaultGeneralSettings.showNotifications &&
     persistedSettings.language === defaultGeneralSettings.language &&
     persistedSettings.alwaysCopyToClipboard === defaultGeneralSettings.alwaysCopyToClipboard &&
-    persistedSettings.liveInsert === defaultGeneralSettings.liveInsert;
+    persistedSettings.liveInsert === defaultGeneralSettings.liveInsert &&
+    persistedSettings.dictationHotkey === defaultGeneralSettings.dictationHotkey;
 
   const localIsNotDefault =
     localSettings.profileName !== defaultGeneralSettings.profileName ||
@@ -122,7 +123,8 @@ export async function loadSharedGeneralSettings(): Promise<GeneralSettings> {
     localSettings.showNotifications !== defaultGeneralSettings.showNotifications ||
     localSettings.language !== defaultGeneralSettings.language ||
     localSettings.alwaysCopyToClipboard !== defaultGeneralSettings.alwaysCopyToClipboard ||
-    localSettings.liveInsert !== defaultGeneralSettings.liveInsert;
+    localSettings.liveInsert !== defaultGeneralSettings.liveInsert ||
+    localSettings.dictationHotkey !== defaultGeneralSettings.dictationHotkey;
 
   if (persistedIsDefault && localIsNotDefault) {
     await invoke("save_general_settings", { settings: localSettings });

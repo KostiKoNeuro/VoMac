@@ -9,6 +9,7 @@ export const defaultGeneralSettings: GeneralSettings = {
   language: "ru",
   alwaysCopyToClipboard: false,
   liveInsert: false,
+  dictationHotkey: "",
 };
 
 export function loadGeneralSettings(): GeneralSettings {
@@ -31,6 +32,7 @@ export function loadGeneralSettings(): GeneralSettings {
       language: (parsed.language === "en" || parsed.language === "ru") ? parsed.language : defaultGeneralSettings.language,
       alwaysCopyToClipboard: typeof parsed.alwaysCopyToClipboard === "boolean" ? parsed.alwaysCopyToClipboard : defaultGeneralSettings.alwaysCopyToClipboard,
       liveInsert: typeof parsed.liveInsert === "boolean" ? parsed.liveInsert : defaultGeneralSettings.liveInsert,
+      dictationHotkey: typeof parsed.dictationHotkey === "string" ? parsed.dictationHotkey : defaultGeneralSettings.dictationHotkey,
     };
   } catch {
     return defaultGeneralSettings;

@@ -51,6 +51,8 @@ pub struct GeneralSettings {
     pub language: String,
     pub always_copy_to_clipboard: bool,
     pub live_insert: bool,
+    /// Saved dictation shortcut; empty means "use the built-in default".
+    pub dictation_hotkey: String,
 }
 
 impl Default for GeneralSettings {
@@ -62,6 +64,7 @@ impl Default for GeneralSettings {
             language: "ru".to_string(),
             always_copy_to_clipboard: false,
             live_insert: false,
+            dictation_hotkey: String::new(),
         }
     }
 }
@@ -218,6 +221,7 @@ fn sanitize_general_settings(settings: GeneralSettings) -> GeneralSettings {
         language: sanitize_language(settings.language.trim()),
         always_copy_to_clipboard: settings.always_copy_to_clipboard,
         live_insert: settings.live_insert,
+        dictation_hotkey: settings.dictation_hotkey.trim().to_string(),
     }
 }
 

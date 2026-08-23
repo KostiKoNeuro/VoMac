@@ -33,6 +33,18 @@ pub struct HotkeyStore {
 }
 
 pub fn setup<R: Runtime>(app: &mut App<R>) -> tauri::Result<()> {
+    // Load saved dictation hotkey (or use default)
+    let dictation_hotkey = storage::load_current_general_settings(app.handle())
+        .map(|s| {
+            let saved = s.dictation_hotkey.trim().to_string();
+            if saved.is_empty() {
+                DEFAULT_DICTATION_SHORTCUT.to_string()
+            } else {
+                saved
+            }
+        })
+        .unwrap_or_else(|_| DEFAULT_DICTATION_SHORTCUT.to_string());
+
     // Load saved rewriter hotkey (or use default)
     let rewriter_hotkey = storage::load_current_rewriter_settings(app.handle())
         .map(|s| {
@@ -45,7 +57,7 @@ pub fn setup<R: Runtime>(app: &mut App<R>) -> tauri::Result<()> {
         .unwrap_or_else(|_| DEFAULT_REWRITER_SHORTCUT.to_string());
 
     app.manage(HotkeyStore {
-        dictation_shortcut: Mutex::new(DEFAULT_DICTATION_SHORTCUT.to_string()),
+        dictation_shortcut: Mutex::new(dictation_hotkey.clone()),
         dictation_registered: Mutex::new(false),
         dictation_error: Mutex::new(None),
         rewriter_shortcut: Mutex::new(rewriter_hotkey.clone()),
@@ -74,7 +86,7 @@ pub fn setup<R: Runtime>(app: &mut App<R>) -> tauri::Result<()> {
 
     // Register dictation hotkey
     let status =
-        apply_dictation_shortcut(&app_handle, &store, DEFAULT_DICTATION_SHORTCUT.to_string());
+        apply_dictation_shortcut(&app_handle, &store, dictation_hotkey);
     let _ = app_handle.emit(EVENT_HOTKEY_STATUS, status);
 
     // Register rewriter hotkey
@@ -126,9 +138,26 @@ pub fn set_dictation_hotkey<R: Runtime>(
     shortcut: String,
 ) -> Result<HotkeyStatusPayload, String> {
     let normalized_shortcut = normalize_shortcut(&shortcut)?;
-    let status = apply_dictation_shortcut(&app_handle, &state, normalized_shortcut);
+    let status = apply_dictation_shortcut(&app_handle, &state, normalized_shortcut.clone());
+    persist_dictation_shortcut(&app_handle, &normalized_shortcut);
     let _ = app_handle.emit(EVENT_HOTKEY_STATUS, status.clone());
     Ok(status)
+}
+
+// Persists the dictation shortcut so setup() can restore it on next launch.
+fn persist_dictation_shortcut<R: Runtime>(app_handle: &AppHandle<R>, shortcut: &str) {
+    let Ok(mut settings) = storage::load_current_general_settings(app_handle) else {
+        return;
+    };
+
+    if settings.dictation_hotkey.trim() == shortcut {
+        return;
+    }
+
+    settings.dictation_hotkey = shortcut.to_string();
+    if let Err(error) = storage::save_general_settings(app_handle.clone(), settings) {
+        eprintln!("[vo][hotkey] failed to persist dictation shortcut: {error}");
+    }
 }
 
 // ─── Rewriter hotkey commands ───
