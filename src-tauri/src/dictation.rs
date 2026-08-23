@@ -236,21 +236,37 @@ fn build_trigger_context<R: Runtime>(
 ) -> tauri::Result<TriggerContext> {
     #[cfg(target_os = "windows")]
     {
-        let (monitor_position, monitor_size) =
-            resolve_monitor_geometry_simple(app_handle);
-
-        // Place overlay at bottom center of the monitor
-        let window_x = monitor_position.0
-            + (monitor_size.0 as i32 / 2)
-            - (OVERLAY_WINDOW_WIDTH as i32 / 2);
-        let window_y = monitor_position.1
-            + (monitor_size.1 as i32)
-            - OVERLAY_EDGE_PADDING
-            - OVERLAY_WINDOW_HEIGHT as i32;
-
-        // Capture target window for text insertion
+        // The anchor drives both overlay placement and the insertion target.
         let anchor = capture_anchor_from_foreground_window();
         let target = captured_target_from_anchor(&anchor);
+
+        let (monitor_position, monitor_size, scale_factor) = if anchor.mode == "none" {
+            // No foreground window: fall back to the app's own monitor.
+            resolve_monitor_geometry_simple(app_handle)
+        } else {
+            // Show the overlay on the monitor where the user is typing.
+            resolve_monitor_for_point(app_handle, anchor.x, anchor.y)
+        };
+
+        // The window is sized in logical pixels while monitor geometry is physical,
+        // so convert the overlay size to the target monitor's scale.
+        let overlay_size = (
+            (OVERLAY_WINDOW_WIDTH * scale_factor).round() as i32,
+            (OVERLAY_WINDOW_HEIGHT * scale_factor).round() as i32,
+        );
+        let (window_x, window_y) = overlay_position_bottom_center(
+            overlay_size,
+            (monitor_position, monitor_size),
+            scale_factor,
+        );
+
+        log_runtime_event(
+            "overlay-positioned",
+            format!(
+                "mode={} pos=({}, {}) scaleFactor={scale_factor}",
+                anchor.mode, window_x, window_y
+            ),
+        );
 
         return Ok(TriggerContext {
             window_x,
@@ -259,16 +275,16 @@ fn build_trigger_context<R: Runtime>(
             payload: DictationTriggeredPayload {
                 sequence: next_sequence(state),
                 anchor: AnchorPayload {
-                    x: window_x,
-                    y: window_y,
-                    mode: "bottom-center".to_string(),
+                    x: anchor.x,
+                    y: anchor.y,
+                    mode: anchor.mode.to_string(),
                 },
                 monitor: MonitorPayload {
                     x: monitor_position.0,
                     y: monitor_position.1,
                     width: monitor_size.0,
                     height: monitor_size.1,
-                    scale_factor: 1.0,
+                    scale_factor,
                 },
             },
             created_at: Instant::now(),
@@ -406,10 +422,10 @@ fn monitor_lookup_window<R: Runtime>(app_handle: &AppHandle<R>) -> Option<Webvie
 }
 
 #[cfg(target_os = "windows")]
-/// Returns (x, y, width, height) of the primary monitor's work area.
+/// Returns (x, y), (width, height) of the app's monitor work area plus its scale factor.
 fn resolve_monitor_geometry_simple<R: Runtime>(
     app_handle: &AppHandle<R>,
-) -> ((i32, i32), (u32, u32)) {
+) -> ((i32, i32), (u32, u32), f64) {
     // Try main window's monitor first
     let monitor = app_handle
         .get_webview_window(MAIN_WINDOW_LABEL)
@@ -422,7 +438,11 @@ fn resolve_monitor_geometry_simple<R: Runtime>(
 
     if let Some(m) = monitor {
         let wa = m.work_area();
-        return ((wa.position.x, wa.position.y), (wa.size.width, wa.size.height));
+        return (
+            (wa.position.x, wa.position.y),
+            (wa.size.width, wa.size.height),
+            m.scale_factor(),
+        );
     }
 
     // Fallback: use cursor position to find monitor
@@ -432,11 +452,63 @@ fn resolve_monitor_geometry_simple<R: Runtime>(
             window.monitor_from_point(cursor.0 as f64, cursor.1 as f64)
         {
             let wa = m.work_area();
-            return ((wa.position.x, wa.position.y), (wa.size.width, wa.size.height));
+            return (
+                (wa.position.x, wa.position.y),
+                (wa.size.width, wa.size.height),
+                m.scale_factor(),
+            );
         }
     }
 
-    ((0, 0), (1920, 1080))
+    ((0, 0), (1920, 1080), 1.0)
+}
+
+#[cfg(target_os = "windows")]
+/// Returns work area (position, size) and scale factor of the monitor containing
+/// the given physical screen point.
+fn resolve_monitor_for_point<R: Runtime>(
+    app_handle: &AppHandle<R>,
+    x: i32,
+    y: i32,
+) -> ((i32, i32), (u32, u32), f64) {
+    if let Some(window) = monitor_lookup_window(app_handle) {
+        if let Ok(Some(monitor)) = window.monitor_from_point(x as f64, y as f64) {
+            let wa = monitor.work_area();
+            return (
+                (wa.position.x, wa.position.y),
+                (wa.size.width, wa.size.height),
+                monitor.scale_factor(),
+            );
+        }
+    }
+
+    ((0, 0), (1920, 1080), 1.0)
+}
+
+#[cfg(target_os = "windows")]
+/// Places the overlay at the bottom center of the monitor work area (physical px),
+/// clamped inside the work area. Position is fixed regardless of caret location.
+fn overlay_position_bottom_center(
+    overlay_size: (i32, i32),
+    monitor: ((i32, i32), (u32, u32)),
+    scale_factor: f64,
+) -> (i32, i32) {
+    let ((mon_x, mon_y), (mon_w, mon_h)) = monitor;
+    let mon_w = mon_w as i32;
+    let mon_h = mon_h as i32;
+    let (win_w, win_h) = overlay_size;
+
+    let padding = (OVERLAY_EDGE_PADDING as f64 * scale_factor).round() as i32;
+
+    let min_x = mon_x + padding;
+    let max_x = (mon_x + mon_w - padding - win_w).max(min_x);
+    let min_y = mon_y + padding;
+    let max_y = (mon_y + mon_h - padding - win_h).max(min_y);
+
+    (
+        clamp(mon_x + mon_w / 2 - win_w / 2, min_x, max_x),
+        clamp(mon_y + mon_h - padding - win_h, min_y, max_y),
+    )
 }
 
 #[cfg(target_os = "windows")]
@@ -657,5 +729,46 @@ fn capture_anchor_from_foreground_window() -> AnchorSnapshot {
         mode: "cursor",
         foreground_hwnd: foreground as isize,
         focused_hwnd: focused_hwnd as isize,
+    }
+}
+
+#[cfg(all(test, target_os = "windows"))]
+mod tests {
+    use super::*;
+
+    const MONITOR: ((i32, i32), (u32, u32)) = ((0, 0), (1920, 1080));
+
+    #[test]
+    fn places_pill_at_bottom_center() {
+        let pos = overlay_position_bottom_center((304, 92), MONITOR, 1.0);
+        assert_eq!(pos, (960 - 152, 1080 - 10 - 92));
+    }
+
+    #[test]
+    fn position_is_clamped_to_work_area() {
+        // Window larger than the monitor must not produce negative offsets.
+        let pos = overlay_position_bottom_center((4000, 2000), MONITOR, 1.0);
+        assert_eq!(pos, (10, 10));
+
+        // Tiny work area clamps both axes to the padding corner.
+        let tiny = ((50, 50), (100u32, 80u32));
+        let pos = overlay_position_bottom_center((304, 92), tiny, 1.0);
+        assert_eq!(pos, (60, 60));
+    }
+
+    #[test]
+    fn scale_factor_converts_logical_metrics() {
+        // 150% DPI: the work area is physical pixels, the window is scaled up.
+        let monitor = ((0, 0), (2880u32, 1620u32));
+        let pos = overlay_position_bottom_center((456, 138), monitor, 1.5);
+        assert_eq!(pos, (1440 - 228, 1620 - 15 - 138));
+    }
+
+    #[test]
+    fn works_on_secondary_monitor_with_negative_coords() {
+        // A monitor positioned to the left of the primary one.
+        let monitor = ((-1920, 0), (1920u32, 1040u32));
+        let pos = overlay_position_bottom_center((304, 92), monitor, 1.0);
+        assert_eq!(pos, (-1920 + 960 - 152, 1040 - 10 - 92));
     }
 }
