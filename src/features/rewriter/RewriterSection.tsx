@@ -428,7 +428,7 @@ export function RewriterSection() {
                   className="min-w-0 flex-1"
                 />
                 <Button
-                  variant="ghost"
+                  variant="secondary"
                   onClick={() => void handleApplyHotkey()}
                   disabled={hotkeyApplying}
                   className="shrink-0 self-end whitespace-nowrap"
@@ -490,7 +490,7 @@ export function RewriterSection() {
                     className="min-w-0 flex-1"
                   />
                   <Button
-                    variant="ghost"
+                    variant="secondary"
                     onClick={() => void handleLoadModels()}
                     disabled={modelsLoading}
                     className="shrink-0 self-end whitespace-nowrap"

@@ -228,7 +228,7 @@ export function TranscriptionSection() {
                   />
                   {provider !== "deepgram" && (
                     <Button
-                      variant="ghost"
+                      variant="secondary"
                       onClick={() => void handleLoadModels()}
                       disabled={modelsLoading}
                       className="shrink-0 self-end whitespace-nowrap"
