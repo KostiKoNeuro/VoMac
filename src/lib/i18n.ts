@@ -79,6 +79,11 @@ const en = {
   "recording.hotkey.error.registrationFailed": "Shortcut registration failed",
   "recording.hotkey.updateError": "Unable to update global shortcut.",
   "recording.hotkey.runtimeNotice": "Global shortcut works only inside the Tauri desktop runtime.",
+  "recording.microphone.label": "Microphone",
+  "recording.microphone.desc": "Which audio input to capture speech from. \"System default\" follows the device selected in Windows.",
+  "recording.microphone.default": "System default",
+  "recording.microphone.refresh": "Refresh device list",
+  "recording.microphone.unnamed": "Microphone",
   "recording.smartGain.label": "Smart input gain",
   "recording.smartGain.desc": "Smooth voice level for stable and clean speech capture.",
   "recording.smartGain.aria": "Enable smart input gain",
@@ -241,9 +246,12 @@ const en = {
   "rewriter.overlay.insert": "Insert",
   "rewriter.overlay.copy": "Copy",
   "rewriter.overlay.rewrite": "Rewrite",
+  "rewriter.overlay.close": "Close",
   "rewriter.overlay.cancel": "Cancel",
   "rewriter.overlay.processing": "Rewriting...",
   "rewriter.overlay.noText": "No text selected",
+  "history.kind.rewrite": "Rewrite",
+  "history.rewrite.sourceLabel": "Source text",
 };
 
 export type TranslationKey = keyof typeof en;
@@ -325,6 +333,11 @@ const ru: TranslationDictionary = {
   "recording.hotkey.error.registrationFailed": "Не удалось зарегистрировать хоткей",
   "recording.hotkey.updateError": "Не удалось обновить глобальный хоткей.",
   "recording.hotkey.runtimeNotice": "Глобальный хоткей работает только в десктопном приложении Tauri.",
+  "recording.microphone.label": "Микрофон",
+  "recording.microphone.desc": "С какого аудиовхода записывать речь. «Системный по умолчанию» следует за устройством, выбранным в Windows.",
+  "recording.microphone.default": "Системный по умолчанию",
+  "recording.microphone.refresh": "Обновить список устройств",
+  "recording.microphone.unnamed": "Микрофон",
   "recording.smartGain.label": "Умное усиление входа",
   "recording.smartGain.desc": "Выравнивает уровень голоса для стабильного и чистого захвата речи.",
   "recording.smartGain.aria": "Включить умное усиление входа",
@@ -487,9 +500,12 @@ const ru: TranslationDictionary = {
   "rewriter.overlay.insert": "Вставить",
   "rewriter.overlay.copy": "Копировать",
   "rewriter.overlay.rewrite": "Переписать",
+  "rewriter.overlay.close": "Закрыть",
   "rewriter.overlay.cancel": "Отмена",
   "rewriter.overlay.processing": "Переписываю...",
   "rewriter.overlay.noText": "Текст не выделен",
+  "history.kind.rewrite": "Рерайт",
+  "history.rewrite.sourceLabel": "Исходный текст",
 };
 
 const dictionaries: Record<AppLanguage, TranslationDictionary> = { en, ru };

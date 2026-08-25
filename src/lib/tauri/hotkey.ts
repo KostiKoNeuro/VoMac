@@ -45,3 +45,43 @@ export async function resumeDictationHotkey(): Promise<void> {
   const { invoke } = await import("@tauri-apps/api/core");
   await invoke("resume_dictation_hotkey");
 }
+
+const REWRITER_DEFAULT_SHORTCUT = "Ctrl+Alt+Space";
+
+export async function getRewriterHotkeyStatus(): Promise<HotkeyStatus> {
+  if (!isTauriRuntime()) {
+    return {
+      shortcut: REWRITER_DEFAULT_SHORTCUT,
+      isRegistered: false,
+      lastError: getWebRuntimeNotice(),
+    };
+  }
+
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<HotkeyStatus>("get_rewriter_hotkey_status");
+}
+
+export async function setRewriterHotkey(shortcut: string): Promise<HotkeyStatus> {
+  if (!isTauriRuntime()) {
+    return {
+      shortcut,
+      isRegistered: false,
+      lastError: getWebRuntimeNotice(),
+    };
+  }
+
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<HotkeyStatus>("set_rewriter_hotkey", { shortcut });
+}
+
+export async function suspendRewriterHotkey(): Promise<void> {
+  if (!isTauriRuntime()) return;
+  const { invoke } = await import("@tauri-apps/api/core");
+  await invoke("suspend_rewriter_hotkey");
+}
+
+export async function resumeRewriterHotkey(): Promise<void> {
+  if (!isTauriRuntime()) return;
+  const { invoke } = await import("@tauri-apps/api/core");
+  await invoke("resume_rewriter_hotkey");
+}

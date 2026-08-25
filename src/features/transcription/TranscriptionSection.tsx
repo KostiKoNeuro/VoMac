@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { SectionCard } from "../../components/SectionCard";
 import { SettingsRow } from "../../components/SettingsRow";
 import { Button } from "../../components/ui/Button";
@@ -167,6 +168,19 @@ export function TranscriptionSection() {
           </div>
         }
       >
+        <AnimatePresence>
+          {saveMessage ? (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="mb-4"
+            >
+              <Notice tone={saveTone}>{saveMessage}</Notice>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
         <div className="space-y-1">
           {!preset.sttSupported && !isCustom ? (
             <Notice tone="warning" title={t("transcription.sttNotSupported.title" as any)}>
@@ -268,11 +282,6 @@ export function TranscriptionSection() {
             }
           />
         </div>
-        {saveMessage ? (
-          <Notice tone={saveTone} className="mt-4">
-            {saveMessage}
-          </Notice>
-        ) : null}
       </SectionCard>
 
       {/* Custom Providers Card */}

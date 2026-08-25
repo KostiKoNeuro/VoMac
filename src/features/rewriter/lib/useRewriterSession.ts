@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useTranscriptionHistory } from "../../history/context/TranscriptionHistoryContext";
 import { loadSharedTranscriptionSettings } from "../../../lib/sharedState";
 import { getProviderPreset } from "../../transcription/config/transcriptionSettings";
 import type { RewriterPreset, RewriterSettings } from "../types";
@@ -27,8 +28,10 @@ export function useRewriterSession({ getLatestRewriterSettings }: RewriterSessio
   const [resultText, setResultText] = useState("");
   const [presets, setPresets] = useState<RewriterPreset[]>([]);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [rewriterModel, setRewriterModel] = useState("");
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const { addHistoryItem, setItemStatus } = useTranscriptionHistory();
 
   const startSession = useCallback(async (text: string) => {
     try {
@@ -140,6 +143,7 @@ export function useRewriterSession({ getLatestRewriterSettings }: RewriterSessio
       }
 
       setResultText(content.trim());
+      setRewriterModel(model);
       setPhase("result");
     } catch (error: any) {
       if (error.name === "AbortError") {
@@ -155,16 +159,32 @@ export function useRewriterSession({ getLatestRewriterSettings }: RewriterSessio
     }
   }, [getLatestRewriterSettings, selectedText]);
 
+  // Rewrites land in the shared history alongside dictations (kind="rewrite").
+  const recordRewriteInHistory = useCallback(
+    (status: "inserted" | "copied") => {
+      const text = resultText.trim();
+      if (!text) return;
+      const item = addHistoryItem({
+        text,
+        provider: "rewriter",
+        model: rewriterModel || "gpt-4o",
+      });
+      setItemStatus(item.id, status);
+    },
+    [resultText, rewriterModel, addHistoryItem, setItemStatus],
+  );
+
   const insertResult = useCallback(async () => {
     if (!resultText.trim()) return;
     try {
       await invoke("insert_rewritten_text", { text: resultText });
+      recordRewriteInHistory("inserted");
       abortSession();
     } catch (error) {
       console.error("Failed to insert rewritten text:", error);
       setErrorText("Insertion failed. Text may be copied to clipboard.");
     }
-  }, [resultText, abortSession]);
+  }, [resultText, abortSession, recordRewriteInHistory]);
 
   const rewriteResult = useCallback(() => {
     setSelectedText(resultText);
@@ -178,12 +198,13 @@ export function useRewriterSession({ getLatestRewriterSettings }: RewriterSessio
     if (!resultText.trim()) return;
     try {
       await navigator.clipboard.writeText(resultText);
+      recordRewriteInHistory("copied");
       abortSession();
     } catch (error) {
       console.error("Failed to copy text:", error);
       setErrorText("Could not copy to clipboard.");
     }
-  }, [resultText, abortSession]);
+  }, [resultText, abortSession, recordRewriteInHistory]);
 
   return {
     phase,

@@ -72,6 +72,9 @@ body {
       transparent 58%
     ),
     var(--color-bg-canvas);
+  /* The gradient covers the viewport exactly; never tile it if the page
+     ever overflows (the duplicated-band artifact from the bug report). */
+  background-repeat: no-repeat;
 }
 
 body[data-window="overlay"],

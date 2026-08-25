@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { SectionCard } from "../../components/SectionCard";
 import { SettingsRow } from "../../components/SettingsRow";
 import { Button } from "../../components/ui/Button";
@@ -12,7 +13,6 @@ import { loadSharedRewriterSettings, saveSharedRewriterSettings,
 import { defaultRewriterSettings } from "./config/rewriterSettingsStore";
 import { buildProviderOptions, getProviderPreset } from "../transcription/config/transcriptionSettings";
 import { useTranslation } from "../../lib/i18n";
-import { isTauriRuntime } from "../../lib/tauri/runtime";
 import { fetchAvailableModels } from "../../lib/modelLoader";
 import type { RewriterPreset, RewriterSettings } from "./types";
 import type { CustomProviderConfig } from "../transcription/types";
@@ -259,7 +259,6 @@ export function RewriterSection() {
   const [model, setModel] = useState(defaultRewriterSettings.model);
   const [presets, setPresets] = useState<RewriterPreset[]>([]);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  const [hotkeyApplying, setHotkeyApplying] = useState(false);
   const [customProviders, setCustomProviders] = useState<CustomProviderConfig[]>([]);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
@@ -355,28 +354,16 @@ export function RewriterSection() {
   }
 
   async function handleReset() {
-    setHotkey(defaultRewriterSettings.hotkey);
+    // The hotkey is managed in the Recording section now — keep the current
+    // value so resetting AI settings never touches the trigger key.
     setProvider(defaultRewriterSettings.provider);
     setApiKeyOverride(defaultRewriterSettings.apiKeyOverride);
     setBaseUrlOverride(defaultRewriterSettings.baseUrlOverride);
     setModel(defaultRewriterSettings.model);
     setPresets([]);
-    await saveSharedRewriterSettings(defaultRewriterSettings);
+    await saveSharedRewriterSettings({ ...defaultRewriterSettings, hotkey });
     setSaveMessage(t("rewriter.reset.msg" as any));
     setTimeout(() => setSaveMessage(null), 3000);
-  }
-
-  async function handleApplyHotkey() {
-    if (!isTauriRuntime()) return;
-    setHotkeyApplying(true);
-    try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("set_rewriter_hotkey", { shortcut: hotkey });
-    } catch (error) {
-      console.error("Failed to apply rewriter hotkey:", error);
-    } finally {
-      setHotkeyApplying(false);
-    }
   }
 
   function handleAddPreset() {
@@ -415,29 +402,20 @@ export function RewriterSection() {
           </div>
         }
       >
+        <AnimatePresence>
+          {saveMessage ? (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="mb-4"
+            >
+              <Notice tone="success">{saveMessage}</Notice>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
         <div className="space-y-1">
-          <SettingsRow
-            label={t("rewriter.hotkey.label" as any)}
-            description={t("rewriter.hotkey.desc" as any)}
-            control={
-              <div className="flex items-start gap-2">
-                <Input
-                  label={t("rewriter.hotkey.inputLabel" as any)}
-                  value={hotkey}
-                  onChange={(e) => setHotkey(e.target.value)}
-                  className="min-w-0 flex-1"
-                />
-                <Button
-                  variant="secondary"
-                  onClick={() => void handleApplyHotkey()}
-                  disabled={hotkeyApplying}
-                  className="shrink-0 self-end whitespace-nowrap"
-                >
-                  {t("rewriter.hotkey.apply" as any)}
-                </Button>
-              </div>
-            }
-          />
           <SettingsRow
             label={t("rewriter.provider.label" as any)}
             description={t("rewriter.provider.desc" as any)}
@@ -515,10 +493,6 @@ export function RewriterSection() {
             }
           />
         </div>
-
-        {saveMessage ? (
-          <Notice tone="success" className="mt-4">{saveMessage}</Notice>
-        ) : null}
       </SectionCard>
 
       {/* Presets */}

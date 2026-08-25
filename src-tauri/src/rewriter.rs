@@ -3,8 +3,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use tauri::{
     webview::{PageLoadEvent, PageLoadPayload},
-    App, AppHandle, Emitter, Manager, PhysicalPosition, Position, Runtime, State, Webview,
-    WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+    App, AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Position, Runtime, Size,
+    State, Webview, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
 };
 
 use crate::dictation::CapturedTarget;
@@ -156,6 +156,74 @@ pub fn insert_rewritten_text(
 #[tauri::command]
 pub fn get_rewriter_selected_text(state: State<'_, RewriterRuntimeStore>) -> String {
     lock_recover(&state.captured_text).clone()
+}
+
+#[tauri::command]
+/// Resizes the overlay to hug its content (logical px from the webview),
+/// keeping the horizontal center and the top edge, clamped to the monitor.
+pub fn resize_rewriter_window<R: Runtime>(
+    app_handle: AppHandle<R>,
+    width: f64,
+    height: f64,
+) -> Result<(), String> {
+    let Some(window) = app_handle.get_webview_window(REWRITER_WINDOW_LABEL) else {
+        return Ok(());
+    };
+
+    #[cfg(target_os = "windows")]
+    {
+        let scale = window.scale_factor().map_err(|error| error.to_string())?;
+        let target_w = (width.max(1.0) * scale).round() as i32;
+        let target_h = (height.max(1.0) * scale).round() as i32;
+
+        // Decoration-less window: outer and inner sizes match. Skip no-op resizes
+        // so the JS ResizeObserver can never ping-pong with this command.
+        let current = window.outer_size().map_err(|error| error.to_string())?;
+        if (current.width as i32 - target_w).abs() <= 1
+            && (current.height as i32 - target_h).abs() <= 1
+        {
+            return Ok(());
+        }
+
+        let old_pos = window.outer_position().map_err(|error| error.to_string())?;
+        let ideal_x = old_pos.x + (current.width as i32 - target_w) / 2;
+        let ideal_y = old_pos.y;
+
+        let (monitor_pos, monitor_size, _scale) = resolve_monitor_from_point(
+            &app_handle,
+            old_pos.x + current.width as i32 / 2,
+            old_pos.y + current.height as i32 / 2,
+        );
+
+        let min_x = monitor_pos.x + REWRITER_EDGE_PADDING;
+        let max_x = (monitor_pos.x + monitor_size.width as i32 - target_w
+            - REWRITER_EDGE_PADDING)
+            .max(min_x);
+        let min_y = monitor_pos.y + REWRITER_EDGE_PADDING;
+        let max_y = (monitor_pos.y + monitor_size.height as i32 - target_h
+            - REWRITER_EDGE_PADDING)
+            .max(min_y);
+
+        window
+            .set_size(Size::Physical(PhysicalSize::new(
+                target_w.max(1) as u32,
+                target_h.max(1) as u32,
+            )))
+            .map_err(|error| error.to_string())?;
+        window
+            .set_position(Position::Physical(PhysicalPosition::new(
+                clamp(ideal_x, min_x, max_x),
+                clamp(ideal_y, min_y, max_y),
+            )))
+            .map_err(|error| error.to_string())?;
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = (&app_handle, width, height);
+    }
+
+    Ok(())
 }
 
 fn ensure_rewriter_window<R: Runtime>(

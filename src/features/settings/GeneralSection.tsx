@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { SectionCard } from "../../components/SectionCard";
 import { SettingsRow } from "../../components/SettingsRow";
 import { Button } from "../../components/ui/Button";
@@ -27,6 +28,8 @@ export function GeneralSection() {
   const [liveInsert, setLiveInsert] = useState(defaultGeneralSettings.liveInsert);
   // Round-tripped so a general-settings save never wipes the hotkey stored by Rust.
   const [dictationHotkey, setDictationHotkey] = useState(defaultGeneralSettings.dictationHotkey);
+  // Round-tripped: the microphone picker lives in the Recording section.
+  const [microphoneId, setMicrophoneId] = useState(defaultGeneralSettings.microphoneId);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -43,6 +46,7 @@ export function GeneralSection() {
       setAlwaysCopyToClipboard(current.alwaysCopyToClipboard);
       setLiveInsert(current.liveInsert);
       setDictationHotkey(current.dictationHotkey);
+      setMicrophoneId(current.microphoneId);
 
       try {
         const autostartEnabled = await isEnabled();
@@ -101,6 +105,7 @@ export function GeneralSection() {
       alwaysCopyToClipboard,
       liveInsert,
       dictationHotkey,
+      microphoneId,
     });
     setSaveMessage(translate("general.saved"));
     setTimeout(() => {
@@ -116,6 +121,7 @@ export function GeneralSection() {
     setAlwaysCopyToClipboard(defaultGeneralSettings.alwaysCopyToClipboard);
     setLiveInsert(defaultGeneralSettings.liveInsert);
     setDictationHotkey(defaultGeneralSettings.dictationHotkey);
+    setMicrophoneId(defaultGeneralSettings.microphoneId);
     setAppLanguage(defaultGeneralSettings.language);
     await saveSharedGeneralSettings(defaultGeneralSettings);
     setSaveMessage(translate("general.reset.msg"));
@@ -141,6 +147,19 @@ export function GeneralSection() {
           </div>
         }
       >
+        <AnimatePresence>
+          {saveMessage ? (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="mb-4"
+            >
+              <Notice tone="success">{saveMessage}</Notice>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
         <div className="space-y-1">
           <SettingsRow
             label={t("general.language.label")}
@@ -224,11 +243,6 @@ export function GeneralSection() {
             }
           />
         </div>
-        {saveMessage ? (
-          <Notice tone="success" className="mt-4">
-            {saveMessage}
-          </Notice>
-        ) : null}
       </SectionCard>
     </div>
   );

@@ -21,6 +21,7 @@ import { APP_EVENT_REWRITER_TRIGGERED, APP_EVENT_REWRITER_ABORT } from "../../..
 import { useTranslation } from "../../../lib/i18n";
 import { loadSharedRewriterSettings } from "../../../lib/sharedState";
 import { useRewriterSession } from "../lib/useRewriterSession";
+import { RewriterOrb } from "./RewriterOrb";
 import type { RewriterPreset } from "../types";
 import type { LucideProps } from "lucide-react";
 
@@ -62,6 +63,7 @@ export function RewriterOverlayWindow() {
   } = useRewriterSession({ getLatestRewriterSettings: loadSharedRewriterSettings });
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const pillRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (phase === "input") setTimeout(() => inputRef.current?.focus(), 100);
@@ -102,6 +104,38 @@ export function RewriterOverlayWindow() {
     }
   }, [phase, overlayWindow]);
 
+  // Escape closes the overlay from any phase (input, processing, result).
+  useEffect(() => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") abortSession();
+    }
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [abortSession]);
+
+  // Hug the native window to the pill's content size (logical CSS px; the
+  // Rust command converts to physical using the monitor scale factor).
+  useEffect(() => {
+    if (phase === "idle") return;
+    const pill = pillRef.current;
+    if (!pill) return;
+
+    const syncWindowSize = () => {
+      const rect = pill.getBoundingClientRect();
+      if (rect.width < 10 || rect.height < 10) return;
+      // +8 covers the 4px padding of .rewriter-overlay-root on each side.
+      void invoke("resize_rewriter_window", {
+        width: Math.ceil(rect.width) + 8,
+        height: Math.ceil(rect.height) + 8,
+      });
+    };
+
+    syncWindowSize();
+    const observer = new ResizeObserver(syncWindowSize);
+    observer.observe(pill);
+    return () => observer.disconnect();
+  }, [phase]);
+
   useEffect(() => {
     void overlayWindow.setAlwaysOnTop(true);
     void overlayWindow.setResizable(false);
@@ -117,14 +151,16 @@ export function RewriterOverlayWindow() {
       e.preventDefault();
       void sendPrompt(customPrompt);
     }
-    if (e.key === "Escape") abortSession();
   }
 
   if (phase === "idle") return <div className="rewriter-overlay-root" />;
 
   return (
     <div className="rewriter-overlay-root">
-      <div className="rewriter-pill">
+      <div
+        className={"rewriter-pill" + (phase === "processing" ? " compact" : "")}
+        ref={pillRef}
+      >
         <div className="rewriter-inner">
 
           {/* ─── Error ─── */}
@@ -195,7 +231,7 @@ export function RewriterOverlayWindow() {
           {/* ─── Processing ─── */}
           {phase === "processing" && (
             <div className="rewriter-processing">
-              <div className="rewriter-spinner" />
+              <RewriterOrb />
               <span>{t("rewriter.overlay.processing" as any)}</span>
               <button className="rewriter-close-btn" onClick={abortSession} aria-label="Cancel">
                 <X />
@@ -206,6 +242,14 @@ export function RewriterOverlayWindow() {
           {/* ─── Result ─── */}
           {phase === "result" && (
             <>
+              <button
+                className="rewriter-corner-close"
+                onClick={abortSession}
+                aria-label={t("rewriter.overlay.close" as any)}
+                title={t("rewriter.overlay.close" as any)}
+              >
+                <X />
+              </button>
               <div className="rewriter-result-text">{resultText}</div>
               <div className="rewriter-actions-row">
                 <button className="rewriter-action-btn primary" onClick={() => void insertResult()}>

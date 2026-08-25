@@ -53,6 +53,8 @@ pub struct GeneralSettings {
     pub live_insert: bool,
     /// Saved dictation shortcut; empty means "use the built-in default".
     pub dictation_hotkey: String,
+    /// Preferred audio input device; empty means the system default microphone.
+    pub microphone_id: String,
 }
 
 impl Default for GeneralSettings {
@@ -65,6 +67,7 @@ impl Default for GeneralSettings {
             always_copy_to_clipboard: false,
             live_insert: false,
             dictation_hotkey: String::new(),
+            microphone_id: String::new(),
         }
     }
 }
@@ -84,6 +87,12 @@ pub struct HistoryItem {
     pub copied_at: Option<i64>,
     pub failed_at: Option<i64>,
     pub error_message: Option<String>,
+    /// "rewrite" marks AI-rewritten entries; missing/"dictation" = raw dictation.
+    #[serde(default)]
+    pub kind: String,
+    /// For rewrites: the original selected text before the rewrite.
+    #[serde(default)]
+    pub source_text: String,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -222,6 +231,7 @@ fn sanitize_general_settings(settings: GeneralSettings) -> GeneralSettings {
         always_copy_to_clipboard: settings.always_copy_to_clipboard,
         live_insert: settings.live_insert,
         dictation_hotkey: settings.dictation_hotkey.trim().to_string(),
+        microphone_id: settings.microphone_id.trim().to_string(),
     }
 }
 

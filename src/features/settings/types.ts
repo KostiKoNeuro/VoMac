@@ -8,4 +8,6 @@ export interface GeneralSettings {
   liveInsert: boolean;
   /** Saved dictation shortcut; empty means the built-in default is used. */
   dictationHotkey: string;
+  /** Preferred audio input device; empty means the system default microphone. */
+  microphoneId: string;
 }

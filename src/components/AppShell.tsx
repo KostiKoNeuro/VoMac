@@ -13,12 +13,12 @@ export function AppShell({ title, description, sidebar, children }: AppShellProp
   const { t } = useTranslation();
 
   return (
-    <div className="relative min-h-screen overflow-hidden antialiased">
+    <div className="relative h-screen overflow-hidden antialiased">
       {/* Subtle ambient glows */}
       <div className="pointer-events-none absolute -left-20 -top-20 h-56 w-56 rounded-full bg-[var(--color-accent)]/[0.04] blur-[48px]" />
       <div className="pointer-events-none absolute -right-16 top-10 h-56 w-56 rounded-full bg-[var(--color-accent)]/[0.03] blur-[48px]" />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[1340px] gap-5 p-5 lg:p-6">
+      <div className="relative mx-auto flex h-full w-full max-w-[1340px] gap-5 p-5 lg:p-6">
         <aside className="w-[240px] shrink-0">{sidebar}</aside>
 
         <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-xl)]">
@@ -36,7 +36,7 @@ export function AppShell({ title, description, sidebar, children }: AppShellProp
 
           <div className="h-px w-full bg-gradient-to-r from-transparent via-[var(--color-border)] to-transparent" />
 
-          <section className="flex-1 overflow-y-auto px-6 py-5">{children}</section>
+          <section className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</section>
         </Card>
       </div>
     </div>

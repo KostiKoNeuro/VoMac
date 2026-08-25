@@ -7,6 +7,9 @@ export type HistoryItemStatus =
   | "failed"
   | "blocked";
 
+/** "rewrite" marks AI-rewritten entries; absent or "dictation" = raw dictation. */
+export type HistoryItemKind = "dictation" | "rewrite";
+
 export interface TranscriptionHistoryItem {
   id: string;
   text: string;
@@ -20,6 +23,9 @@ export interface TranscriptionHistoryItem {
   copiedAt: number | null;
   failedAt: number | null;
   errorMessage: string | null;
+  kind?: HistoryItemKind;
+  /** For rewrites: the original selected text before the rewrite. */
+  sourceText?: string;
 }
 
 export interface CreateHistoryItemInput {

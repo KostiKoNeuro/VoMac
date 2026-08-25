@@ -132,6 +132,34 @@ pub fn resume_dictation_hotkey<R: Runtime>(
 }
 
 #[tauri::command]
+pub fn suspend_rewriter_hotkey<R: Runtime>(
+    app_handle: AppHandle<R>,
+    state: State<'_, HotkeyStore>,
+) -> Result<(), String> {
+    let current_shortcut = lock_recover(&state.rewriter_shortcut).clone();
+    if !current_shortcut.is_empty() && *lock_recover(&state.rewriter_registered) {
+        let _ = app_handle
+            .global_shortcut()
+            .unregister(current_shortcut.as_str());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn resume_rewriter_hotkey<R: Runtime>(
+    app_handle: AppHandle<R>,
+    state: State<'_, HotkeyStore>,
+) -> Result<(), String> {
+    let current_shortcut = lock_recover(&state.rewriter_shortcut).clone();
+    if !current_shortcut.is_empty() && *lock_recover(&state.rewriter_registered) {
+        let _ = app_handle
+            .global_shortcut()
+            .register(current_shortcut.as_str());
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub fn set_dictation_hotkey<R: Runtime>(
     app_handle: AppHandle<R>,
     state: State<'_, HotkeyStore>,

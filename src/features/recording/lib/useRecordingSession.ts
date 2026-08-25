@@ -8,6 +8,7 @@ import type {
   TranscriptionSettings,
 } from "../../transcription/types";
 import { TranslationKey, translate, useTranslation } from "../../../lib/i18n";
+import { loadSharedGeneralSettings } from "../../../lib/sharedState";
 import { logRuntimeDiagnostic } from "../../../lib/tauri/diagnostics";
 import type { OverlayPillState } from "../overlay/types";
 import { assessTranscriptionQuality } from "./qualityGate";
@@ -460,7 +461,33 @@ export function useRecordingSession({
 
     try {
       assertRecordingApiAvailable();
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Respect the microphone chosen in settings; fall back to the system
+      // default if the selected device is gone (unplugged, renamed).
+      const microphoneId = (await loadSharedGeneralSettings()).microphoneId.trim();
+      const openStream = (audio: MediaTrackConstraints | boolean) =>
+        navigator.mediaDevices.getUserMedia({ audio });
+      let stream: MediaStream;
+      if (microphoneId) {
+        try {
+          stream = await openStream({ deviceId: { exact: microphoneId } });
+        } catch (error) {
+          if (
+            error instanceof DOMException &&
+            (error.name === "NotFoundError" || error.name === "OverconstrainedError")
+          ) {
+            void logRuntimeDiagnostic("recording", "microphone-fallback-default", {
+              sessionId,
+              microphoneId,
+            });
+            stream = await openStream(true);
+          } else {
+            throw error;
+          }
+        }
+      } else {
+        stream = await openStream(true);
+      }
       if (!flightControllerRef.current.isCurrent(sessionId)) {
         isStartingRef.current = false;
         stream.getTracks().forEach((track) => track.stop());

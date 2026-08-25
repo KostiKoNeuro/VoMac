@@ -3,7 +3,12 @@ import { X, Keyboard } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { useTranslation } from "../../lib/i18n";
 import { IconButton } from "./IconButton";
-import { suspendDictationHotkey, resumeDictationHotkey } from "../../lib/tauri/hotkey";
+import {
+  suspendDictationHotkey,
+  resumeDictationHotkey,
+  suspendRewriterHotkey,
+  resumeRewriterHotkey,
+} from "../../lib/tauri/hotkey";
 
 interface HotkeyInputProps {
   label: string;
@@ -11,6 +16,8 @@ interface HotkeyInputProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  /** Which global hotkey to suppress while capturing. Defaults to dictation. */
+  suspendTarget?: "dictation" | "rewriter";
 }
 
 export function HotkeyInput({
@@ -19,6 +26,7 @@ export function HotkeyInput({
   value,
   onChange,
   className,
+  suspendTarget = "dictation",
 }: HotkeyInputProps) {
   const { t } = useTranslation();
   const [isRecording, setIsRecording] = useState(false);
@@ -26,13 +34,18 @@ export function HotkeyInput({
   const elementRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const suspend =
+      suspendTarget === "rewriter" ? suspendRewriterHotkey : suspendDictationHotkey;
+    const resume =
+      suspendTarget === "rewriter" ? resumeRewriterHotkey : resumeDictationHotkey;
+
     if (!isRecording) {
       setCurrentKeys([]);
-      void resumeDictationHotkey();
+      void resume();
       return;
     }
 
-    void suspendDictationHotkey();
+    void suspend();
 
     const handleKeyDown = (event: KeyboardEvent) => {
       event.preventDefault();
@@ -76,7 +89,7 @@ export function HotkeyInput({
       document.removeEventListener("keydown", handleKeyDown, { capture: true });
       document.removeEventListener("keyup", handleKeyUp, { capture: true });
     };
-  }, [isRecording, onChange]);
+  }, [isRecording, onChange, suspendTarget]);
 
   useEffect(() => {
     if (!isRecording) return;

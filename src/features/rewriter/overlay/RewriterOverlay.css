@@ -35,6 +35,14 @@
   z-index: 1;
 }
 
+/* Processing phase only: hug the small spinner content. Width is definite
+   in every other phase, so the window resize loop stays stable. */
+.rewriter-pill.compact {
+  width: fit-content;
+  min-width: 180px;
+  max-width: 320px;
+}
+
 /* ─── Inner padding ─── */
 .rewriter-inner {
   padding: 10px;
@@ -99,6 +107,9 @@
 
 .rewriter-input {
   flex: 1;
+  /* Fixed basis: keeps the input phase a sane width inside the
+     fit-content pill. */
+  width: 200px;
   padding: 8px 12px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -193,22 +204,10 @@
   font-weight: 500;
 }
 
-.rewriter-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(129, 140, 248, 0.25);
-  border-top-color: rgba(129, 140, 248, 0.9);
-  border-radius: 50%;
-  animation: rewriter-spin 0.7s linear infinite;
-}
-
-@keyframes rewriter-spin {
-  to { transform: rotate(360deg); }
-}
-
 /* ─── Result ─── */
 .rewriter-result-text {
-  padding: 10px 12px;
+  /* Extra right padding clears the corner close button. */
+  padding: 12px 38px 10px 12px;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 12px;
   font-size: 13px;
@@ -234,7 +233,42 @@
 
 .rewriter-actions-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 5px;
+}
+
+/* Corner dismiss (X) for the result phase — the action row is already
+   full with Insert/Copy/Rewrite, so a fourth button would clip. */
+.rewriter-corner-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 21, 32, 0.92);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rewriter-corner-close:hover {
+  background: rgba(255, 100, 100, 0.15);
+  color: rgba(255, 140, 140, 0.95);
+}
+
+.rewriter-corner-close:active {
+  transform: scale(0.94);
+}
+
+.rewriter-corner-close svg {
+  width: 13px;
+  height: 13px;
 }
 
 .rewriter-action-btn {

@@ -126,6 +126,9 @@ export function HistorySection() {
                       <PillBadge tone={statusTone[item.status]}>
                         {getStatusLabel(item.status)}
                       </PillBadge>
+                      {item.kind === "rewrite" ? (
+                        <PillBadge tone="accent">{translate("history.kind.rewrite")}</PillBadge>
+                      ) : null}
                       <PillBadge tone="neutral">{formatTimestamp(item.createdAt)}</PillBadge>
                       <PillBadge tone="neutral">{item.charLength} {translate("history.units.chars")}</PillBadge>
                       <PillBadge tone="neutral">{item.wordCount} {translate("history.units.words")}</PillBadge>
@@ -146,6 +149,12 @@ export function HistorySection() {
                       />
                     </div>
                   </div>
+
+                  {item.kind === "rewrite" && item.sourceText ? (
+                    <p className="mt-3 border-l-2 border-[var(--color-border)] pl-3 text-xs leading-5 text-[var(--color-text-subtle)]">
+                      {translate("history.rewrite.sourceLabel")}: {item.sourceText}
+                    </p>
+                  ) : null}
 
                   <p className="mt-3 text-sm leading-6 text-[var(--color-text-primary)]">
                     {item.text}

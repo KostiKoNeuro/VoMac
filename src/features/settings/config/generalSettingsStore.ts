@@ -10,6 +10,7 @@ export const defaultGeneralSettings: GeneralSettings = {
   alwaysCopyToClipboard: false,
   liveInsert: false,
   dictationHotkey: "",
+  microphoneId: "",
 };
 
 export function loadGeneralSettings(): GeneralSettings {
@@ -33,6 +34,7 @@ export function loadGeneralSettings(): GeneralSettings {
       alwaysCopyToClipboard: typeof parsed.alwaysCopyToClipboard === "boolean" ? parsed.alwaysCopyToClipboard : defaultGeneralSettings.alwaysCopyToClipboard,
       liveInsert: typeof parsed.liveInsert === "boolean" ? parsed.liveInsert : defaultGeneralSettings.liveInsert,
       dictationHotkey: typeof parsed.dictationHotkey === "string" ? parsed.dictationHotkey : defaultGeneralSettings.dictationHotkey,
+      microphoneId: typeof parsed.microphoneId === "string" ? parsed.microphoneId : defaultGeneralSettings.microphoneId,
     };
   } catch {
     return defaultGeneralSettings;

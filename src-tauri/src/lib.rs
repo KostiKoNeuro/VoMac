@@ -48,6 +48,8 @@ pub fn run() {
             hotkey::set_dictation_hotkey,
             hotkey::suspend_dictation_hotkey,
             hotkey::resume_dictation_hotkey,
+            hotkey::suspend_rewriter_hotkey,
+            hotkey::resume_rewriter_hotkey,
             hotkey::get_rewriter_hotkey_status,
             hotkey::set_rewriter_hotkey,
             insertion::insert_text_mvp,
@@ -65,7 +67,8 @@ pub fn run() {
             rewriter::schedule_rewriter_hide,
             rewriter::cancel_rewriter_hide,
             rewriter::insert_rewritten_text,
-            rewriter::get_rewriter_selected_text
+            rewriter::get_rewriter_selected_text,
+            rewriter::resize_rewriter_window
         ])
         .on_window_event(|window, event| {
             tray::handle_window_event(window, event);

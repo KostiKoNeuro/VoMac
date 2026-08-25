@@ -115,7 +115,8 @@ export async function loadSharedGeneralSettings(): Promise<GeneralSettings> {
     persistedSettings.language === defaultGeneralSettings.language &&
     persistedSettings.alwaysCopyToClipboard === defaultGeneralSettings.alwaysCopyToClipboard &&
     persistedSettings.liveInsert === defaultGeneralSettings.liveInsert &&
-    persistedSettings.dictationHotkey === defaultGeneralSettings.dictationHotkey;
+    persistedSettings.dictationHotkey === defaultGeneralSettings.dictationHotkey &&
+    persistedSettings.microphoneId === defaultGeneralSettings.microphoneId;
 
   const localIsNotDefault =
     localSettings.profileName !== defaultGeneralSettings.profileName ||
@@ -124,7 +125,8 @@ export async function loadSharedGeneralSettings(): Promise<GeneralSettings> {
     localSettings.language !== defaultGeneralSettings.language ||
     localSettings.alwaysCopyToClipboard !== defaultGeneralSettings.alwaysCopyToClipboard ||
     localSettings.liveInsert !== defaultGeneralSettings.liveInsert ||
-    localSettings.dictationHotkey !== defaultGeneralSettings.dictationHotkey;
+    localSettings.dictationHotkey !== defaultGeneralSettings.dictationHotkey ||
+    localSettings.microphoneId !== defaultGeneralSettings.microphoneId;
 
   if (persistedIsDefault && localIsNotDefault) {
     await invoke("save_general_settings", { settings: localSettings });
