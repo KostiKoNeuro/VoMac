@@ -10,7 +10,10 @@
 //! keeps both keycode-driven and character-driven apps working.
 
 #[cfg(target_os = "macos")]
-use tauri::{AppHandle, Runtime, WebviewWindow};
+use std::os::raw::c_void;
+
+#[cfg(target_os = "macos")]
+use tauri::{AppHandle, Manager, Runtime, WebviewWindow};
 
 // ─── CoreGraphics / CoreFoundation / HIServices FFI ───
 
@@ -270,7 +273,9 @@ pub fn type_text_unicode(text: &str) -> Result<(), String> {
     let session = EventSession::new();
 
     for ch in normalized.chars().filter(|ch| *ch != '\0') {
-        let units: Vec<u16> = ch.encode_utf16().collect();
+        // str::encode_utf16 yields an iterator; char's own encode_utf16 is
+        // the buffer-filling variant, hence the round-trip through String.
+        let units: Vec<u16> = ch.to_string().encode_utf16().collect();
         for &key_down in &[true, false] {
             unsafe {
                 // Keycode 0 is a placeholder; apps read the attached Unicode
