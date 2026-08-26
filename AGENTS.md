@@ -1,6 +1,9 @@
 # Project rules
 
-This is a Windows-first desktop dictation app built with Tauri v2 + React + TypeScript.
+This is a desktop dictation app built with Tauri v2 + React + TypeScript.
+Windows is the primary platform; macOS is supported via CGEvent synthetic
+keystrokes (`src-tauri/src/macos_support.rs`) and requires the user to grant
+Accessibility permission — synthetic ⌘V/typing silently fails without it.
 
 ## Product behavior
 - The app records speech from a floating pill overlay.

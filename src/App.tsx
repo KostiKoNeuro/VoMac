@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
+import { AccessibilityPermissionBanner } from "./components/AccessibilityPermissionBanner";
 import { AppShell } from "./components/AppShell";
 import { Sidebar } from "./components/Sidebar";
 import { HistorySection } from "./features/history/HistorySection";
@@ -64,29 +65,32 @@ function MainAppWindow() {
   }, [activeSection]);
 
   return (
-    <AppShell
-      title={t("vo.title" as any)}
-      description={t("about.desc")}
-      sidebar={
-        <Sidebar
-          items={appSections}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-        />
-      }
-    >
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeSection}
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.22, ease: "easeOut" }}
-        >
-          {sectionContent}
-        </motion.div>
-      </AnimatePresence>
-    </AppShell>
+    <>
+      <AccessibilityPermissionBanner />
+      <AppShell
+        title={t("vo.title" as any)}
+        description={t("about.desc")}
+        sidebar={
+          <Sidebar
+            items={appSections}
+            activeSection={activeSection}
+            onSectionChange={setActiveSection}
+          />
+        }
+      >
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeSection}
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
+            {sectionContent}
+          </motion.div>
+        </AnimatePresence>
+      </AppShell>
+    </>
   );
 }
 

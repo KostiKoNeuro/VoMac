@@ -13,6 +13,7 @@ import { loadSharedRewriterSettings, saveSharedRewriterSettings,
 import { defaultRewriterSettings } from "./config/rewriterSettingsStore";
 import { buildProviderOptions, getProviderPreset } from "../transcription/config/transcriptionSettings";
 import { useTranslation } from "../../lib/i18n";
+import { isApplePlatform } from "../../lib/platform";
 import { fetchAvailableModels } from "../../lib/modelLoader";
 import type { RewriterPreset, RewriterSettings } from "./types";
 import type { CustomProviderConfig } from "../transcription/types";
@@ -146,7 +147,9 @@ function PromptModal({
             placeholder={t("rewriter.presets.promptPlaceholder" as any)}
           />
           <p className="mt-2 text-xs text-[var(--color-text-subtle)]">
-            {t("rewriter.presets.promptEditor.hint" as any)}
+            {t((isApplePlatform
+              ? "rewriter.presets.promptEditor.hint.mac"
+              : "rewriter.presets.promptEditor.hint") as any)}
           </p>
         </div>
 

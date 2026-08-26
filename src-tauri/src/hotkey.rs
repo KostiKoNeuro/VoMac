@@ -10,7 +10,16 @@ use crate::{
     storage,
 };
 
+// macOS defaults use ⌘ (Command): physical Ctrl combos clash with the
+// system input-source switcher (⌃Space) and break the platform convention.
+#[cfg(target_os = "macos")]
+const DEFAULT_DICTATION_SHORTCUT: &str = "Command+Shift+Space";
+#[cfg(target_os = "macos")]
+const DEFAULT_REWRITER_SHORTCUT: &str = "Command+Alt+Space";
+
+#[cfg(not(target_os = "macos"))]
 const DEFAULT_DICTATION_SHORTCUT: &str = "Ctrl+Shift+Space";
+#[cfg(not(target_os = "macos"))]
 const DEFAULT_REWRITER_SHORTCUT: &str = "Ctrl+Alt+Space";
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -40,7 +49,7 @@ pub fn setup<R: Runtime>(app: &mut App<R>) -> tauri::Result<()> {
             if saved.is_empty() {
                 DEFAULT_DICTATION_SHORTCUT.to_string()
             } else {
-                saved
+                migrate_saved_shortcut(saved)
             }
         })
         .unwrap_or_else(|_| DEFAULT_DICTATION_SHORTCUT.to_string());
@@ -51,7 +60,7 @@ pub fn setup<R: Runtime>(app: &mut App<R>) -> tauri::Result<()> {
             if s.hotkey.trim().is_empty() {
                 DEFAULT_REWRITER_SHORTCUT.to_string()
             } else {
-                s.hotkey
+                migrate_saved_shortcut(s.hotkey)
             }
         })
         .unwrap_or_else(|_| DEFAULT_REWRITER_SHORTCUT.to_string());
@@ -294,6 +303,30 @@ fn rewriter_snapshot(store: &HotkeyStore) -> HotkeyStatusPayload {
 }
 
 // ─── Shared helpers ───
+
+// Settings saved by a Windows build register the physical Control key on
+// macOS, where ⌃Space conflicts with the input-source switcher; remap those
+// saved combos to ⌘ once at startup.
+#[cfg(target_os = "macos")]
+fn migrate_saved_shortcut(shortcut: String) -> String {
+    shortcut
+        .split('+')
+        .map(|token| {
+            let token = token.trim();
+            if token.eq_ignore_ascii_case("ctrl") || token.eq_ignore_ascii_case("control") {
+                "Command".to_string()
+            } else {
+                token.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("+")
+}
+
+#[cfg(not(target_os = "macos"))]
+fn migrate_saved_shortcut(shortcut: String) -> String {
+    shortcut
+}
 
 fn is_shortcut_match(pressed: &Shortcut, stored: &Mutex<String>) -> bool {
     let stored_str = lock_recover(stored);

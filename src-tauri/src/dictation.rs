@@ -123,8 +123,24 @@ pub fn refresh_target_from_foreground(
         return Some(target);
     }
 
-    #[allow(unreachable_code)]
-    None
+    #[cfg(target_os = "macos")]
+    {
+        // The frontmost app receives the paste, so there are no window
+        // handles to capture — only the capture timestamp matters.
+        let target = CapturedTarget {
+            captured_at_ms: current_timestamp_ms(),
+            ..CapturedTarget::default()
+        };
+        log_target_capture(reason, "frontmost", target);
+        *lock_recover(&state.target) = target;
+        return Some(target);
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        let _ = (state, reason);
+        None
+    }
 }
 
 #[tauri::command]
@@ -307,6 +323,73 @@ fn build_trigger_context<R: Runtime>(
         });
     }
 
+    #[cfg(target_os = "macos")]
+    {
+        // Anchor on the mouse location: macOS global display coordinates are
+        // in logical points, so the containing monitor is found logically and
+        // the anchor is converted to that monitor's physical pixels.
+        let mouse = crate::macos_support::mouse_location();
+        let work_area = crate::macos_support::monitor_work_area_from_point(app_handle, mouse)
+            .unwrap_or(((0, 0), (1440, 900), 1.0));
+        let scale_factor = work_area.2;
+
+        // Remember the frontmost app (the paste destination) in the unused
+        // hwnd fields; the non-focusable pill normally keeps it frontmost.
+        let (psn_high, psn_low) = crate::macos_support::front_process_serial();
+        let target = CapturedTarget {
+            foreground_hwnd: psn_high,
+            focused_hwnd: psn_low,
+            captured_at_ms: current_timestamp_ms(),
+        };
+        log_target_capture("trigger", "cursor", target);
+
+        let anchor_x = (mouse.0 * scale_factor).round() as i32;
+        let anchor_y = (mouse.1 * scale_factor).round() as i32;
+
+        let overlay_size = (
+            (OVERLAY_WINDOW_WIDTH * scale_factor).round() as i32,
+            (OVERLAY_WINDOW_HEIGHT * scale_factor).round() as i32,
+        );
+        // The Dock has no auto-hide signal available without AppKit, keep the
+        // same edge padding as Windows without an auto-hiding taskbar.
+        let (window_x, window_y) =
+            overlay_position_bottom_center(overlay_size, (work_area.0, work_area.1), scale_factor, 0);
+
+        log_runtime_event(
+            "overlay-positioned",
+            format!(
+                "mode=cursor pos=({window_x},{window_y}) monitor=({},{})x{}x{} scaleFactor={scale_factor}",
+                work_area.0 .0,
+                work_area.0 .1,
+                work_area.1 .0,
+                work_area.1 .1
+            ),
+        );
+
+        return Ok(TriggerContext {
+            window_x,
+            window_y,
+            target,
+            payload: DictationTriggeredPayload {
+                sequence: next_sequence(state),
+                anchor: AnchorPayload {
+                    x: anchor_x,
+                    y: anchor_y,
+                    mode: "cursor".to_string(),
+                },
+                monitor: MonitorPayload {
+                    x: work_area.0 .0,
+                    y: work_area.0 .1,
+                    width: work_area.1 .0,
+                    height: work_area.1 .1,
+                    scale_factor,
+                },
+            },
+            created_at: Instant::now(),
+        });
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     #[allow(unreachable_code)]
     Ok(TriggerContext {
         payload: DictationTriggeredPayload {
@@ -539,7 +622,6 @@ fn monitor_work_area_from_window(hwnd: isize) -> Option<MonitorWorkArea> {
     })
 }
 
-#[cfg(target_os = "windows")]
 /// Places the overlay at the bottom center of the monitor work area (physical px),
 /// clamped inside the work area. Position is fixed regardless of caret location.
 /// `extra_bottom_gap` (physical px) lifts the pill above an auto-hiding taskbar.
@@ -568,6 +650,13 @@ fn overlay_position_bottom_center(
     )
 }
 
+fn log_target_capture(reason: &str, mode: &str, target: CapturedTarget) {
+    log_runtime_event(
+        "target-captured",
+        format!("reason={reason} mode={mode} {}", describe_target(target)),
+    );
+}
+
 #[cfg(target_os = "windows")]
 struct AnchorSnapshot {
     x: i32,
@@ -584,14 +673,6 @@ fn captured_target_from_anchor(anchor: &AnchorSnapshot) -> CapturedTarget {
         focused_hwnd: anchor.focused_hwnd,
         captured_at_ms: current_timestamp_ms(),
     }
-}
-
-#[cfg(target_os = "windows")]
-fn log_target_capture(reason: &str, mode: &str, target: CapturedTarget) {
-    log_runtime_event(
-        "target-captured",
-        format!("reason={reason} mode={mode} {}", describe_target(target)),
-    );
 }
 
 #[cfg(target_os = "windows")]

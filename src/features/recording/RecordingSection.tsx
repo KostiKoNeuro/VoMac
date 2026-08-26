@@ -9,6 +9,7 @@ import { Notice } from "../../components/ui/Notice";
 import { PillBadge } from "../../components/ui/PillBadge";
 import { Select } from "../../components/ui/Select";
 import { translate, useTranslation } from "../../lib/i18n";
+import { isApplePlatform } from "../../lib/platform";
 import { listAudioInputDevices, type AudioInputDevice } from "../../lib/audioDevices";
 import {
   loadSharedGeneralSettings,
@@ -45,7 +46,9 @@ function localizeHotkeyError(message: string): string {
 
 export function RecordingSection() {
   const { t } = useTranslation();
-  const [pushToTalk, setPushToTalk] = useState("Ctrl+Shift+Space");
+  const [pushToTalk, setPushToTalk] = useState(isApplePlatform
+    ? "Command+Shift+Space"
+    : "Ctrl+Shift+Space");
   const [hotkeyStatus, setHotkeyStatus] = useState<HotkeyStatus | null>(null);
   const [isSavingHotkey, setIsSavingHotkey] = useState(false);
   const [microphones, setMicrophones] = useState<AudioInputDevice[]>([]);
@@ -205,7 +208,9 @@ export function RecordingSection() {
                   label={t("recording.hotkey.inputLabel")}
                   value={pushToTalk}
                   onChange={(value) => setPushToTalk(value)}
-                  hint={t("recording.hotkey.inputHint")}
+                  hint={t(isApplePlatform
+                    ? "recording.hotkey.inputHint.mac"
+                    : "recording.hotkey.inputHint")}
                 />
                 <div className="flex items-center justify-between gap-2">
                   <PillBadge tone={hotkeyBadgeTone}>{hotkeyBadgeLabel}</PillBadge>

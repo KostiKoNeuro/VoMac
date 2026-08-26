@@ -2,6 +2,7 @@ mod dictation;
 mod events;
 mod hotkey;
 mod insertion;
+mod macos_support;
 mod rewriter;
 mod storage;
 mod tray;
@@ -55,6 +56,8 @@ pub fn run() {
             insertion::insert_text_mvp,
             insertion::insert_text_live,
             insertion::delete_last_chars,
+            macos_support::get_accessibility_permission,
+            macos_support::open_accessibility_settings,
             storage::load_general_settings,
             storage::save_general_settings,
             storage::load_transcription_settings,

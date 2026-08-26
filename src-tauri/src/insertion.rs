@@ -2,15 +2,25 @@ use arboard::Clipboard;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::State;
 
-use crate::dictation::{
-    clear_target, current_target, refresh_target_from_foreground, CapturedTarget,
-    DictationRuntimeStore,
-};
+use crate::dictation::{clear_target, current_target, CapturedTarget, DictationRuntimeStore};
+#[cfg(target_os = "windows")]
+use crate::dictation::refresh_target_from_foreground;
 
 // Give the target app time to read the pasted clipboard content before the
 // user's previous clipboard is restored; slow readers need more than a
 // moment, but waiting too long risks clobbering a fresh user copy.
 const POST_PASTE_CLIPBOARD_SETTLE_MS: u64 = 1500;
+
+// Shown when macOS synthetic keystrokes are unavailable without the
+// Accessibility permission (System Settings → Privacy & Security).
+#[cfg(target_os = "macos")]
+const ACCESSIBILITY_REQUIRED_ERROR: &str =
+    "Grant Dicta Accessibility access in System Settings to enable automatic insertion.";
+
+// Wait after re-activating the target app before sending ⌘V, so the app
+// switch (and its window animation) settles first.
+#[cfg(target_os = "macos")]
+const PASTE_APP_SWITCH_SETTLE_MS: u64 = 150;
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,6 +32,23 @@ pub struct InsertionResult {
 
 #[tauri::command]
 pub fn insert_text_mvp(state: State<'_, DictationRuntimeStore>, text: String) -> InsertionResult {
+    #[cfg(target_os = "macos")]
+    {
+        // Use the app captured at trigger time (its ProcessSerialNumber rides
+        // in the hwnd fields): paste_text_to_target re-activates it so the
+        // text lands where dictation started.
+        let target = current_target(&state);
+
+        log_insertion_event(
+            "target-resolved",
+            format!("shortcutTarget={} insertionTarget={}", describe_target(target), describe_target(target)),
+        );
+
+        let result = paste_text_to_target(target, text);
+        clear_target(&state);
+        return result;
+    }
+
     #[cfg(target_os = "windows")]
     {
         let shortcut_target = current_target(&state);
@@ -32,7 +59,7 @@ pub fn insert_text_mvp(state: State<'_, DictationRuntimeStore>, text: String) ->
         } else {
             refresh_target_from_foreground(&state, "before-insertion").unwrap_or(shortcut_target)
         };
-        
+
         log_insertion_event(
             "target-resolved",
             format!(
@@ -47,13 +74,15 @@ pub fn insert_text_mvp(state: State<'_, DictationRuntimeStore>, text: String) ->
         return result;
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
-        let _ = text;
+        let _ = (&state, text);
         InsertionResult {
             inserted: false,
             method: "native_clipboard_paste".to_string(),
-            error: Some("System insertion is currently implemented for Windows only.".to_string()),
+            error: Some(
+                "System insertion is currently implemented for Windows and macOS.".to_string(),
+            ),
         }
     }
 }
@@ -88,13 +117,48 @@ pub fn insert_text_live(text: String) -> InsertionResult {
         }
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+        if !crate::macos_support::is_accessibility_granted() {
+            return InsertionResult {
+                inserted: false,
+                method: "unicode_typing".to_string(),
+                error: Some(ACCESSIBILITY_REQUIRED_ERROR.to_string()),
+            };
+        }
+
+        match crate::macos_support::type_text_unicode(&text) {
+            Ok(()) => {
+                log_insertion_event(
+                    "live-typed",
+                    format!("chars={}", text.chars().count()),
+                );
+                InsertionResult {
+                    inserted: true,
+                    method: "unicode_typing".to_string(),
+                    error: None,
+                }
+            }
+            Err(error) => {
+                log_insertion_event("live-typing-failed", error.clone());
+                InsertionResult {
+                    inserted: false,
+                    method: "unicode_typing".to_string(),
+                    error: Some(error),
+                }
+            }
+        }
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         let _ = text;
         InsertionResult {
             inserted: false,
             method: "unicode_typing".to_string(),
-            error: Some("Live typing is currently implemented for Windows only.".to_string()),
+            error: Some(
+                "Live typing is currently implemented for Windows and macOS.".to_string(),
+            ),
         }
     }
 }
@@ -120,13 +184,40 @@ pub fn delete_last_chars(count: u32) -> InsertionResult {
         }
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+        if !crate::macos_support::is_accessibility_granted() {
+            return InsertionResult {
+                inserted: false,
+                method: "backspace".to_string(),
+                error: Some(ACCESSIBILITY_REQUIRED_ERROR.to_string()),
+            };
+        }
+
+        let capped = count.min(2000);
+        match crate::macos_support::send_backspaces(capped) {
+            Ok(()) => InsertionResult {
+                inserted: true,
+                method: "backspace".to_string(),
+                error: None,
+            },
+            Err(error) => InsertionResult {
+                inserted: false,
+                method: "backspace".to_string(),
+                error: Some(error),
+            },
+        }
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         let _ = count;
         InsertionResult {
             inserted: false,
             method: "backspace".to_string(),
-            error: Some("Backspacing is currently implemented for Windows only.".to_string()),
+            error: Some(
+                "Backspacing is currently implemented for Windows and macOS.".to_string(),
+            ),
         }
     }
 }
@@ -240,7 +331,22 @@ fn send_backspaces(count: u32) -> Result<(), String> {
     Ok(())
 }
 
-pub(crate) fn paste_text_to_target(target: CapturedTarget, text: String) -> InsertionResult {    if text.trim().is_empty() {
+pub(crate) fn paste_text_to_target(target: CapturedTarget, text: String) -> InsertionResult {
+    // Checked before touching the clipboard so a denied permission never
+    // leaves the user's clipboard clobbered.
+    #[cfg(target_os = "macos")]
+    {
+        if !crate::macos_support::is_accessibility_granted() {
+            log_insertion_event("failed", "accessibility-not-granted".to_string());
+            return InsertionResult {
+                inserted: false,
+                method: "native_clipboard_paste".to_string(),
+                error: Some(ACCESSIBILITY_REQUIRED_ERROR.to_string()),
+            };
+        }
+    }
+
+    if text.trim().is_empty() {
         return InsertionResult {
             inserted: false,
             method: "none".to_string(),
@@ -267,6 +373,57 @@ pub(crate) fn paste_text_to_target(target: CapturedTarget, text: String) -> Inse
             method: "native_clipboard_paste".to_string(),
             error: Some(format!("Unable to set clipboard text: {error}")),
         };
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // The rewriter overlay steals focus while open; hand it back to the
+        // app captured at trigger time so the paste lands in the right place.
+        if target.foreground_hwnd != 0 || target.focused_hwnd != 0 {
+            crate::macos_support::activate_front_process((
+                target.foreground_hwnd,
+                target.focused_hwnd,
+            ));
+            std::thread::sleep(std::time::Duration::from_millis(
+                PASTE_APP_SWITCH_SETTLE_MS,
+            ));
+        }
+
+        let send_result = crate::macos_support::send_paste_keystroke();
+        if send_result.is_ok() {
+            std::thread::sleep(std::time::Duration::from_millis(
+                POST_PASTE_CLIPBOARD_SETTLE_MS,
+            ));
+        }
+        let _ = restore_clipboard(&mut clipboard, previous_clipboard_text);
+
+        match send_result {
+            Ok(()) => {
+                log_insertion_event(
+                    "completed",
+                    format!(
+                        "method=native_clipboard_paste target={}",
+                        describe_target(target)
+                    ),
+                );
+                InsertionResult {
+                    inserted: true,
+                    method: "native_clipboard_paste".to_string(),
+                    error: None,
+                }
+            }
+            Err(error) => {
+                log_insertion_event(
+                    "failed",
+                    format!("target={} error={error}", describe_target(target)),
+                );
+                InsertionResult {
+                    inserted: false,
+                    method: "native_insertion".to_string(),
+                    error: Some(error),
+                }
+            }
+        }
     }
 
     #[cfg(target_os = "windows")]
@@ -305,12 +462,15 @@ pub(crate) fn paste_text_to_target(target: CapturedTarget, text: String) -> Inse
         }
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
+        let _ = (target, clipboard, previous_clipboard_text);
         InsertionResult {
             inserted: false,
             method: "native_clipboard_paste".to_string(),
-            error: Some("System insertion is currently implemented for Windows only.".to_string()),
+            error: Some(
+                "System insertion is currently implemented for Windows and macOS.".to_string(),
+            ),
         }
     }
 }

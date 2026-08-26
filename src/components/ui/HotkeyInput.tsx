@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { X, Keyboard } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { useTranslation } from "../../lib/i18n";
+import { formatShortcut } from "../../lib/platform";
 import { IconButton } from "./IconButton";
 import {
   suspendDictationHotkey,
@@ -18,6 +19,35 @@ interface HotkeyInputProps {
   className?: string;
   /** Which global hotkey to suppress while capturing. Defaults to dictation. */
   suspendTarget?: "dictation" | "rewriter";
+}
+
+/** Maps a KeyboardEvent.code to a canonical shortcut token, or null. */
+function keyTokenFromCode(code: string): string | null {
+  if (/^Key[A-Z]$/.test(code)) {
+    return code.slice(3);
+  }
+  if (/^Digit[0-9]$/.test(code)) {
+    return code.slice(5);
+  }
+  if (code === "Space") {
+    return "Space";
+  }
+  if (/^F([1-9]|1[0-9]|2[0-4])$/.test(code)) {
+    return code;
+  }
+  return null;
+}
+
+/** Fallback token from event.key for keys without a stable code mapping. */
+function legacyKeyToken(event: KeyboardEvent): string | null {
+  const keyName = event.key;
+  if (keyName === " ") {
+    return "Space";
+  }
+  if (!keyName) {
+    return null;
+  }
+  return keyName.length === 1 ? keyName.toUpperCase() : keyName;
 }
 
 export function HotkeyInput({
@@ -51,20 +81,22 @@ export function HotkeyInput({
       event.preventDefault();
       event.stopPropagation();
 
+      // Canonical tokens understood by the Rust shortcut parser.
       const keys = [];
       if (event.ctrlKey) keys.push("Ctrl");
       if (event.shiftKey) keys.push("Shift");
       if (event.altKey) keys.push("Alt");
-      if (event.metaKey) keys.push("Super");
+      if (event.metaKey) keys.push("Command");
 
-      const keyName = event.key;
-      const isModifierOnly = ["Control", "Shift", "Alt", "Meta", "Escape", "Enter", "Tab", "CapsLock", "OS"].includes(keyName);
+      const isModifierOnly = ["Control", "Shift", "Alt", "Meta", "Escape", "Enter", "Tab", "CapsLock", "OS"].includes(event.key);
 
-      if (!isModifierOnly && keyName !== " ") {
-        const displayKey = keyName.length === 1 ? keyName.toUpperCase() : keyName;
-        keys.push(displayKey);
-      } else if (keyName === " ") {
-        keys.push("Space");
+      // Prefer event.code: it names the physical key and stays stable under
+      // non-Latin keyboard layouts (Option+key remaps event.key on macOS).
+      const codeToken = keyTokenFromCode(event.code)
+        ?? (isModifierOnly ? null : legacyKeyToken(event));
+
+      if (codeToken !== null) {
+        keys.push(codeToken);
       }
 
       setCurrentKeys(keys);
@@ -105,8 +137,8 @@ export function HotkeyInput({
   }, [isRecording]);
 
   const displayValue = isRecording
-    ? (currentKeys.length > 0 ? currentKeys.join(" + ") : t("recording.hotkey.capture.listening"))
-    : value;
+    ? (currentKeys.length > 0 ? formatShortcut(currentKeys.join("+")) : t("recording.hotkey.capture.listening"))
+    : formatShortcut(value);
 
   return (
     <div className={cn("grid gap-1.5", className)} ref={elementRef}>

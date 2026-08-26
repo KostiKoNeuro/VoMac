@@ -1,4 +1,5 @@
 import type { RewriterPreset, RewriterSettings } from "../types";
+import { isApplePlatform } from "../../../lib/platform";
 import { REWRITER_ICONS, type RewriterIconKey } from "./rewriterIcons";
 
 const VALID_ICON_KEYS = new Set(REWRITER_ICONS.map((e) => e.key)) as Set<RewriterIconKey>;
@@ -6,7 +7,7 @@ const VALID_ICON_KEYS = new Set(REWRITER_ICONS.map((e) => e.key)) as Set<Rewrite
 const STORAGE_KEY = "vo.rewriter.settings";
 
 export const defaultRewriterSettings: RewriterSettings = {
-  hotkey: "Ctrl+Alt+Space",
+  hotkey: isApplePlatform ? "Command+Alt+Space" : "Ctrl+Alt+Space",
   provider: "openai",
   apiKeyOverride: "",
   baseUrlOverride: "",

@@ -218,7 +218,57 @@ pub fn resize_rewriter_window<R: Runtime>(
             .map_err(|error| error.to_string())?;
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+        let scale = window.scale_factor().map_err(|error| error.to_string())?;
+        let target_w = (width.max(1.0) * scale).round() as i32;
+        let target_h = (height.max(1.0) * scale).round() as i32;
+
+        // Skip no-op resizes so the JS ResizeObserver can never ping-pong
+        // with this command.
+        let current = window.outer_size().map_err(|error| error.to_string())?;
+        if (current.width as i32 - target_w).abs() <= 1
+            && (current.height as i32 - target_h).abs() <= 1
+        {
+            return Ok(());
+        }
+
+        let old_pos = window.outer_position().map_err(|error| error.to_string())?;
+        let ideal_x = old_pos.x + (current.width as i32 - target_w) / 2;
+        let ideal_y = old_pos.y;
+
+        // Resolve the containing monitor from the window center expressed in
+        // macOS global display coordinates (logical points).
+        let center = (
+            (old_pos.x + current.width as i32 / 2) as f64 / scale,
+            (old_pos.y + current.height as i32 / 2) as f64 / scale,
+        );
+        let work_area =
+            crate::macos_support::monitor_work_area_from_point(&app_handle, center)
+                .unwrap_or(((0, 0), (1920, 1080), scale));
+
+        let min_x = work_area.0 .0 + REWRITER_EDGE_PADDING;
+        let max_x = (work_area.0 .0 + work_area.1 .0 as i32 - target_w - REWRITER_EDGE_PADDING)
+            .max(min_x);
+        let min_y = work_area.0 .1 + REWRITER_EDGE_PADDING;
+        let max_y = (work_area.0 .1 + work_area.1 .1 as i32 - target_h - REWRITER_EDGE_PADDING)
+            .max(min_y);
+
+        window
+            .set_size(Size::Physical(PhysicalSize::new(
+                target_w.max(1) as u32,
+                target_h.max(1) as u32,
+            )))
+            .map_err(|error| error.to_string())?;
+        window
+            .set_position(Position::Physical(PhysicalPosition::new(
+                clamp(ideal_x, min_x, max_x),
+                clamp(ideal_y, min_y, max_y),
+            )))
+            .map_err(|error| error.to_string())?;
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         let _ = (&app_handle, width, height);
     }
@@ -306,6 +356,58 @@ fn build_trigger_context<R: Runtime>(
         });
     }
 
+    #[cfg(target_os = "macos")]
+    {
+        let selected_text = capture_selected_text();
+
+        // macOS global display coordinates are logical points; convert to the
+        // containing monitor's physical pixels for the window position.
+        let mouse = crate::macos_support::mouse_location();
+        let work_area = crate::macos_support::monitor_work_area_from_point(app_handle, mouse)
+            .unwrap_or(((0, 0), (1920, 1080), 1.0));
+        let scale = work_area.2;
+        let cursor_x = (mouse.0 * scale).round() as i32;
+        let cursor_y = (mouse.1 * scale).round() as i32;
+
+        log_runtime_event(
+            "target-captured",
+            format!("textLen={}", selected_text.len()),
+        );
+
+        *lock_recover(&state.captured_text) = selected_text.clone();
+
+        let ideal_x = cursor_x - (REWRITER_WINDOW_WIDTH as i32 / 2);
+        let ideal_y = cursor_y + 20;
+        let min_x = work_area.0 .0 + REWRITER_EDGE_PADDING;
+        let max_x = work_area.0 .0 + work_area.1 .0 as i32
+            - REWRITER_WINDOW_WIDTH as i32
+            - REWRITER_EDGE_PADDING;
+        let min_y = work_area.0 .1 + REWRITER_EDGE_PADDING;
+        let max_y = work_area.0 .1 + work_area.1 .1 as i32
+            - REWRITER_WINDOW_HEIGHT as i32
+            - REWRITER_EDGE_PADDING;
+
+        // Remember the frontmost app so it can be re-activated before the
+        // rewritten text is pasted back (the overlay steals focus meanwhile).
+        let (psn_high, psn_low) = crate::macos_support::front_process_serial();
+
+        return Ok(RewriterTriggerContext {
+            payload: RewriterTriggeredPayload {
+                sequence: next_sequence(state),
+                selected_text,
+            },
+            target: CapturedTarget {
+                foreground_hwnd: psn_high,
+                focused_hwnd: psn_low,
+                captured_at_ms: current_timestamp_ms(),
+            },
+            window_x: clamp(ideal_x, min_x, max_x.max(min_x)),
+            window_y: clamp(ideal_y, min_y, max_y.max(min_y)),
+            created_at: Instant::now(),
+        });
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     #[allow(unreachable_code)]
     Ok(RewriterTriggerContext {
         payload: RewriterTriggeredPayload {
@@ -452,6 +554,60 @@ fn capture_foreground_info() -> (isize, isize) {
 }
 
 // ─── Windows-specific: capture selected text via Ctrl+C ───
+
+#[cfg(target_os = "macos")]
+fn capture_selected_text() -> String {
+    // Prefer the Accessibility API: it reads the selection without touching
+    // the clipboard at all. Many native apps (Notes, TextEdit, Xcode,
+    // Messages) expose kAXSelectedTextAttribute.
+    let ax_text = crate::macos_support::copy_focused_selected_text();
+    if !ax_text.trim().is_empty() {
+        log_runtime_event(
+            "capture-result",
+            format!("captured {} chars via accessibility", ax_text.len()),
+        );
+        return ax_text;
+    }
+
+    // Fallback for apps that don't expose the selection (Electron/Chrome):
+    // sentinel + ⌘C with the Latin character attached, then restore.
+    use arboard::Clipboard;
+
+    let mut clipboard = match Clipboard::new() {
+        Ok(cb) => cb,
+        Err(error) => {
+            log_runtime_event("clipboard-error", format!("Cannot open clipboard: {error}"));
+            return String::new();
+        }
+    };
+
+    let previous_text = clipboard.get_text().ok();
+
+    let sentinel = "\x00__vo_rewriter_sentinel__\x00";
+    let _ = clipboard.set_text(sentinel);
+
+    crate::macos_support::send_copy_keystroke();
+    std::thread::sleep(std::time::Duration::from_millis(CTRL_C_SETTLE_MS));
+
+    let captured = clipboard.get_text().unwrap_or_default();
+
+    if let Some(prev) = previous_text {
+        let _ = clipboard.set_text(prev);
+    } else {
+        let _ = clipboard.set_text("");
+    }
+
+    if captured == sentinel || captured.is_empty() {
+        log_runtime_event("capture-result", "no selection detected".to_string());
+        return String::new();
+    }
+
+    log_runtime_event(
+        "capture-result",
+        format!("captured {} chars via cmd-c", captured.len()),
+    );
+    captured
+}
 
 #[cfg(target_os = "windows")]
 fn capture_selected_text() -> String {

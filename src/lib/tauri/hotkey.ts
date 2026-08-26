@@ -1,8 +1,12 @@
 import { translate } from "../i18n";
 import type { HotkeyStatus } from "../../types/hotkey";
+import { isApplePlatform } from "../platform";
 import { isTauriRuntime } from "./runtime";
 
-const DEFAULT_SHORTCUT = "Ctrl+Shift+Space";
+// Mirrors the Rust defaults in src-tauri/src/hotkey.rs.
+const DEFAULT_SHORTCUT = isApplePlatform
+  ? "Command+Shift+Space"
+  : "Ctrl+Shift+Space";
 
 function getWebRuntimeNotice(): string {
   return translate("recording.hotkey.runtimeNotice");
@@ -46,7 +50,9 @@ export async function resumeDictationHotkey(): Promise<void> {
   await invoke("resume_dictation_hotkey");
 }
 
-const REWRITER_DEFAULT_SHORTCUT = "Ctrl+Alt+Space";
+const REWRITER_DEFAULT_SHORTCUT = isApplePlatform
+  ? "Command+Alt+Space"
+  : "Ctrl+Alt+Space";
 
 export async function getRewriterHotkeyStatus(): Promise<HotkeyStatus> {
   if (!isTauriRuntime()) {
