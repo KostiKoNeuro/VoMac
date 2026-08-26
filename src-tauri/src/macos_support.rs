@@ -96,8 +96,6 @@ mod ffi {
     // AX* symbols are exported by the HIServices subumbrella of ApplicationServices.
     #[link(name = "ApplicationServices", kind = "framework")]
     extern "C" {
-        pub static kAXFocusedUIElementAttribute: CFStringRef;
-        pub static kAXSelectedTextAttribute: CFStringRef;
         pub static kAXTrustedCheckOptionPrompt: CFStringRef;
 
         pub fn AXIsProcessTrusted() -> u8; // Boolean
@@ -338,6 +336,22 @@ fn cf_string_to_rust(cf_string: ffi::CFStringRef) -> String {
     }
 }
 
+// AXAttributeConstants.h declares attribute names as CFSTR() macros rather
+// than exported symbols (they have no linker presence), so build the matching
+// CFStrings ourselves.
+#[cfg(target_os = "macos")]
+fn ax_attribute_name(name: &str) -> ffi::CFStringRef {
+    let mut bytes = name.as_bytes().to_vec();
+    bytes.push(0);
+    unsafe {
+        ffi::CFStringCreateWithCString(
+            std::ptr::null(),
+            bytes.as_ptr(),
+            ffi::K_CF_STRING_ENCODING_UTF8,
+        )
+    }
+}
+
 /// Returns the selected text of the focused UI element via the Accessibility
 /// API, or an empty string when the app does not expose it (common in
 /// Electron/Chrome). Does not touch the clipboard.
@@ -349,17 +363,19 @@ pub fn copy_focused_selected_text() -> String {
             return String::new();
         }
 
+        let focused_attr = ax_attribute_name("AXFocusedUIElement");
         let mut focused: *mut c_void = std::ptr::null_mut();
-        let error =
-            ffi::AXUIElementCopyAttributeValue(system_wide, ffi::kAXFocusedUIElementAttribute, &mut focused);
+        let error = ffi::AXUIElementCopyAttributeValue(system_wide, focused_attr, &mut focused);
+        ffi::CFRelease(focused_attr);
         ffi::CFRelease(system_wide);
         if error != 0 || focused.is_null() {
             return String::new();
         }
 
+        let selected_attr = ax_attribute_name("AXSelectedText");
         let mut value: *mut c_void = std::ptr::null_mut();
-        let error =
-            ffi::AXUIElementCopyAttributeValue(focused, ffi::kAXSelectedTextAttribute, &mut value);
+        let error = ffi::AXUIElementCopyAttributeValue(focused, selected_attr, &mut value);
+        ffi::CFRelease(selected_attr);
         ffi::CFRelease(focused);
         if error != 0 || value.is_null() {
             return String::new();
